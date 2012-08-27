@@ -64,14 +64,17 @@ func (p *Player) Move(to_x, to_y int) {
 //			break
 //		}
 //	}
+	dlog.Println("Move", p.x, p.y)
 	p.x, p.y = to_x, to_y
 //	level.items[p.pos[0]][p.pos[1]].PushFront(p)
 }
 func (p *Player) Walk(dir_x, dir_y int, level *Level) {
 	px, py := p.x + dir_x, p.y + dir_y
-	dlog.Println(px, py)
-	if level.cells[px][py].Walkable() {
-		p.Move(px, py)
+	dlog.Println("Walk", px, py)
+	if px >= 0 && px < level.x && py >= 0 && py < level.y {
+		if level.cells[px][py] == nil || level.cells[px][py].Walkable() {
+			p.Move(px, py)
+		}
 	}
 }
 func (p *Player) Character() int32 { return '@' }
