@@ -39,12 +39,15 @@ func (level *Level) outerWall() {
 	for j := 0; j < level.y; j++ {
 		level.cells[level.x - 1][j] = new(Wall)
 	}
-
-
-
 }
+
 type Cell interface {
 	Walkable() bool
+
+	SeePast() bool
+}
+type Item interface {
+	Activate(*Player)
 }
 type Drawable interface {
 	Character() int32
@@ -55,6 +58,8 @@ type Drawable interface {
 type Player struct {
 	x, y int
 	items []Item
+
+	vision int
 }
 
 func (p *Player) Move(to_x, to_y int) {
@@ -81,14 +86,28 @@ func (p *Player) Character() int32 { return '@' }
 
 ////////////////////// /////////////////////////
 
-type Item interface {
-	Activate(*Player)
+
+type sCell struct {
+	visible bool
 }
+func (c *sCell) Walkable() bool { return true }
+func (c *sCell) SeePast() bool { return true }
 
 type Wall struct {
+	sCell
 }
 func (w *Wall) Walkable() bool { return false }
 func (w *Wall) Character() int32 { return '#' }
+func (w *Wall) SeePast() bool { return false }
+
+func buildTestWalls(level *Level) {
+	for i := 2; i < 20; i++ {
+		level.cells[i][2] = new(Wall)
+	}
+	for j := 3; j < 20; j++ {
+		level.cells[2][j] = new(Wall)
+	}
+}
 
 func main() {
 	file, err := os.Create("log")
@@ -100,8 +119,10 @@ func main() {
 	level.Init()
 	level.outerWall()
 
+	buildTestWalls(&level)
+
 	var player Player
-	player.x, player.y = 1,1
+	player.x, player.y, player.vision = 1,1,5
 	RunCursesUI(&level, &player)
 }
 
