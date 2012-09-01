@@ -6,7 +6,7 @@ import (
 	"os"
 )
 
-var dlog *log.Logger
+var Dlog *log.Logger
 ////////////////////// LEVEL /////////////////////////
 
 type Level struct {
@@ -69,13 +69,13 @@ func (p *Player) Move(to_x, to_y int) {
 //			break
 //		}
 //	}
-	dlog.Println("Move", p.x, p.y)
+	Dlog.Println("Move", p.x, p.y)
 	p.x, p.y = to_x, to_y
 //	level.items[p.pos[0]][p.pos[1]].PushFront(p)
 }
 func (p *Player) Walk(dir_x, dir_y int, level *Level) {
 	px, py := p.x + dir_x, p.y + dir_y
-	dlog.Println("Walk", px, py)
+	Dlog.Println("Walk", px, py)
 	if px >= 0 && px < level.x && py >= 0 && py < level.y {
 		if level.cells[px][py] == nil || level.cells[px][py].Walkable() {
 			p.Move(px, py)
@@ -101,10 +101,10 @@ func (w *Wall) Character() int32 { return '#' }
 func (w *Wall) SeePast() bool { return false }
 
 func buildTestWalls(level *Level) {
-	for i := 2; i < 20; i++ {
+	for i := 2; i < 5; i++ {
 		level.cells[i][2] = new(Wall)
 	}
-	for j := 3; j < 20; j++ {
+	for j := 3; j < 5; j++ {
 		level.cells[2][j] = new(Wall)
 	}
 }
@@ -112,7 +112,7 @@ func buildTestWalls(level *Level) {
 func main() {
 	file, err := os.Create("log")
 	if err != nil { log.Fatal(err) }
-	dlog = log.New(file, "DERELICT: ", 0)
+	Dlog = log.New(file, "DERELICT: ", 0)
 
 	var level Level
 	level.x, level.y = 69, 23
