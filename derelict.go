@@ -13,14 +13,19 @@ type Level struct {
 	x, y int
 	items [][]*list.List
 	cells [][]Cell
-//	air   [][]Gas
+	Air   [][]float64
+	airBuffer [][]float64
 }
 func (level *Level) Init() {
 	level.items = make([][]*list.List, level.x, level.x)
 	level.cells = make([][]Cell, level.x, level.x)
+	level.Air = make([][]float64, level.x, level.x)
+	level.airBuffer = make([][]float64, level.x, level.x)
 	for i := 0; i < level.x; i++ {
 		level.cells[i] = make([]Cell, level.y, level.y)
 		level.items[i] = make([]*list.List, level.y, level.y)
+		level.Air[i] = make([]float64, level.y, level.y)
+		level.airBuffer[i] = make([]float64, level.y, level.y)
 		for j := 0; j < level.y; j++ {
 			level.items[i][j] = list.New()
 		}
@@ -40,7 +45,41 @@ func (level *Level) outerWall() {
 		level.cells[level.x - 1][j] = new(Wall)
 	}
 }
+func (level *Level) Iterate() {
+	Dlog.Println("-> Level.Iterate")
+	for i := 0; i < level.x; i++ {
+		for j := 0; j < level.y; j++ {
+			level.airBuffer[i][j] = 0
+		}
+	}
 
+	var total, nairs float64
+	for i := 0; i < level.x; i++ {
+		for j := 0; j < level.y; j++ {
+			total = 0
+			nairs = 0
+			Dlog.Printf("   Level.Iterate cell: (%v, %v)\n", i, j)
+			for ii := -1; ii <= 1; ii++ {
+				for jj := -1; jj <= 1; jj++ {
+					if i + ii >= 0 && i + ii < level.x && j + jj >= 0 && j + jj < level.y {
+						Dlog.Printf("   Level.Iterate (%v, %v)\n", i+ii, j+jj)
+						if level.cells[i+ii][j+jj] == nil || level.cells[i+ii][j+jj].Walkable() {
+							total += level.Air[i+ii][j+jj]
+							nairs++
+						}
+					}
+				}
+			}
+			if nairs == 0 || total == 0 { continue }
+			Dlog.Printf("   Level.Iterate (%v, %v) airs: %v, total: %v\n", i, j, nairs, total)
+			level.airBuffer[i][j] = total / nairs
+		}
+	}
+	tmp := level.Air
+	level.Air = level.airBuffer
+	level.airBuffer = tmp
+	Dlog.Println("<- Level.Iterate")
+}
 type Cell interface {
 	Walkable() bool
 
@@ -69,18 +108,23 @@ func (p *Player) Move(to_x, to_y int) {
 //			break
 //		}
 //	}
-	Dlog.Println("Move", p.x, p.y)
+	Dlog.Println("-> Move", to_x, to_y)
 	p.x, p.y = to_x, to_y
+	Dlog.Println("<- Move", p.x, p.y)
 //	level.items[p.pos[0]][p.pos[1]].PushFront(p)
 }
-func (p *Player) Walk(dir_x, dir_y int, level *Level) {
+func (p *Player) Walk(dir_x, dir_y int, level *Level) bool {
 	px, py := p.x + dir_x, p.y + dir_y
-	Dlog.Println("Walk", px, py)
+	Dlog.Println("-> Walk", px, py)
 	if px >= 0 && px < level.x && py >= 0 && py < level.y {
 		if level.cells[px][py] == nil || level.cells[px][py].Walkable() {
 			p.Move(px, py)
+			Dlog.Println("<- Walk", true)
+			return true
 		}
 	}
+	Dlog.Println("<- Walk", false)
+	return false
 }
 func (p *Player) Character() int32 { return '@' }
 
@@ -108,6 +152,7 @@ func buildTestWalls(level *Level) {
 		level.cells[2][j] = new(Wall)
 	}
 }
+/////////////////// ///////////////////
 
 func main() {
 	file, err := os.Create("log")
@@ -118,6 +163,8 @@ func main() {
 	level.x, level.y = 69, 23
 	level.Init()
 	level.outerWall()
+	level.Air[10][10] = 9
+	level.Air[10][11] = 9
 
 	buildTestWalls(&level)
 
