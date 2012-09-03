@@ -13,18 +13,18 @@ type Level struct {
 	x, y int
 	items [][]*list.List
 	cells [][]Cell
-	Air   [][]float64
+	air   [][]float64
 	airBuffer [][]float64
 }
 func (level *Level) Init() {
 	level.items = make([][]*list.List, level.x, level.x)
 	level.cells = make([][]Cell, level.x, level.x)
-	level.Air = make([][]float64, level.x, level.x)
+	level.air = make([][]float64, level.x, level.x)
 	level.airBuffer = make([][]float64, level.x, level.x)
 	for i := 0; i < level.x; i++ {
 		level.cells[i] = make([]Cell, level.y, level.y)
 		level.items[i] = make([]*list.List, level.y, level.y)
-		level.Air[i] = make([]float64, level.y, level.y)
+		level.air[i] = make([]float64, level.y, level.y)
 		level.airBuffer[i] = make([]float64, level.y, level.y)
 		for j := 0; j < level.y; j++ {
 			level.items[i][j] = list.New()
@@ -64,7 +64,7 @@ func (level *Level) Iterate() {
 					if i + ii >= 0 && i + ii < level.x && j + jj >= 0 && j + jj < level.y {
 						Dlog.Printf("   Level.Iterate (%v, %v)\n", i+ii, j+jj)
 						if level.cells[i+ii][j+jj] == nil || level.cells[i+ii][j+jj].Walkable() {
-							total += level.Air[i+ii][j+jj]
+							total += level.air[i+ii][j+jj]
 							nairs++
 						}
 					}
@@ -75,8 +75,8 @@ func (level *Level) Iterate() {
 			level.airBuffer[i][j] = total / nairs
 		}
 	}
-	tmp := level.Air
-	level.Air = level.airBuffer
+	tmp := level.air
+	level.air = level.airBuffer
 	level.airBuffer = tmp
 	Dlog.Println("<- Level.Iterate")
 }
@@ -86,10 +86,33 @@ type Cell interface {
 	SeePast() bool
 }
 type Item interface {
-	Activate(*Player)
+	Name() string
+	Description() string
+	Activate(*Level, *Player)
 }
 type Drawable interface {
 	Character() int32
+}
+
+////////////////////// SENSORS /////////////////////////
+
+type Sensor interface {
+	Sense(level *Level, player *Player) float64
+}
+
+type PressureSensor struct {}
+func (s *PressureSensor) Name() string { return "Pressure Sensor" }
+func (s *PressureSensor) Description() string { return "Short range ambient air pressure sensor" }
+func (s *PressureSensor) Activate(level *Level, player *Player) {
+	// Add pressure sensor to the suit
+}
+
+////////////////////// SUIT /////////////////////////
+
+type Suit struct {
+	air float64
+	airCapacity float64
+	faceplateOpen bool
 }
 
 ////////////////////// PLAYER /////////////////////////
@@ -153,24 +176,33 @@ func buildTestWalls(level *Level) {
 	}
 }
 /////////////////// ///////////////////
+type Game struct {
+	level Level
+	player Player
+	ui UI
+}
+func NewGame() Game {
+	var game Game
+	game.level.x, game.level.y = 69, 23
+	game.level.Init()
+	game.level.outerWall()
+	game.level.air[10][10] = 9
+	game.level.air[10][11] = 9
 
+	buildTestWalls(&game.level)
+
+	game.player.x, game.player.y, game.player.vision = 1,1,5
+
+	return game
+}
 func main() {
 	file, err := os.Create("log")
 	if err != nil { log.Fatal(err) }
 	Dlog = log.New(file, "DERELICT: ", 0)
 
-	var level Level
-	level.x, level.y = 69, 23
-	level.Init()
-	level.outerWall()
-	level.Air[10][10] = 9
-	level.Air[10][11] = 9
-
-	buildTestWalls(&level)
-
-	var player Player
-	player.x, player.y, player.vision = 1,1,5
-	RunCursesUI(&level, &player)
+	game := NewGame()
+	game.ui = new(CursesUI)
+	game.ui.Run(&game)
 }
 
 
