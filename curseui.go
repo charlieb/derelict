@@ -92,6 +92,7 @@ func (ui *CursesUI) Menu(s []string) (option int, aborted bool) {
 	} else {
 		aborted = false
 	}
+	ui.refresh()
 	return
 }
 func (ui *CursesUI) drawMessages() {
@@ -166,6 +167,17 @@ func castRay(x1, y1, x2, y2 int, cells [][]Cell) bool {
 	Dlog.Println("<- castRay", true)
 	return true
 }
+func (ui *CursesUI) refresh() {
+	for i := 0; i < len(ui.mapCache); i++ {
+		for j := 0; j < len(ui.mapCache[0]); j++ {
+			ui.screen.Addch(i, j, ui.mapCache[i][j], 0)
+//			if ui.mapCache[i][j] == ' ' || ui.mapCache[i][j] == '.' {
+//				ui.screen.Addch(i, j, '0'+int32(level.air[i][j]), 0)
+//			}
+		}
+	}
+}
+
 func (ui *CursesUI) drawMap(level *Level, player *Player) {
 	for i := -player.vision; i < player.vision; i++ {
 		px := player.x + i
@@ -187,16 +199,8 @@ func (ui *CursesUI) drawMap(level *Level, player *Player) {
 			}
 		}
 	}
-
-	for i := 0; i < level.x; i++ {
-		for j := 0; j < level.y; j++ {
-			ui.screen.Addch(i, j, ui.mapCache[i][j], 0)
-			if ui.mapCache[i][j] == ' ' || ui.mapCache[i][j] == '.' {
-				ui.screen.Addch(i, j, '0'+int32(level.air[i][j]), 0)
-			}
-		}
-	}
-	ui.screen.Addch(player.x, player.y, player.Character(), 0)
+	ui.mapCache[player.x][player.y]  = player.Character()
+	ui.refresh()
 }
 func keyToDir(key int) (int, int, bool) {
 	switch key {
@@ -225,7 +229,9 @@ func keyToDir(key int) (int, int, bool) {
 
 func (ui *CursesUI) DirectionPrompt() (x, y int, abort bool) {
 	ui.screen.Addstr(0, 0, "Which Direction?", 0)
-	return keyToDir(ui.screen.Getch())
+	x, y, abort = keyToDir(ui.screen.Getch())
+	ui.refresh()
+	return
 }
 func (ui *CursesUI) handleKey(key int, level *Level, player *Player) (moved, quit bool) {
 	Dlog.Printf("-> handleKey key: %c", key)
