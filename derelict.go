@@ -1,7 +1,6 @@
 package main
 
 import (
-	"container/list"
 	"log"
 	"os"
 )
@@ -12,25 +11,19 @@ var Dlog *log.Logger
 
 type Level struct {
 	x, y      int
-	items     [][]*list.List
 	cells     [][]Cell
 	air       [][]float64
 	airBuffer [][]float64
 }
 
 func (level *Level) Init() {
-	level.items = make([][]*list.List, level.x, level.x)
 	level.cells = make([][]Cell, level.x, level.x)
 	level.air = make([][]float64, level.x, level.x)
 	level.airBuffer = make([][]float64, level.x, level.x)
 	for i := 0; i < level.x; i++ {
 		level.cells[i] = make([]Cell, level.y, level.y)
-		level.items[i] = make([]*list.List, level.y, level.y)
 		level.air[i] = make([]float64, level.y, level.y)
 		level.airBuffer[i] = make([]float64, level.y, level.y)
-		for j := 0; j < level.y; j++ {
-			level.items[i][j] = list.New()
-		}
 	}
 }
 func (level *Level) outerWall() {
@@ -99,48 +92,36 @@ type Drawable interface {
 	Character() int32
 }
 
-////////////////////// SENSORS /////////////////////////
-
-type Sensor interface {
-	Sense(level *Level, player *Player) float64
-}
-
-type PressureSensor struct{}
-
-func (s *PressureSensor) Name() string        { return "Pressure Sensor" }
-func (s *PressureSensor) Description() string { return "Short range ambient air pressure sensor" }
-func (s *PressureSensor) Activate(level *Level, player *Player) {
-	// Add pressure sensor to the suit
-}
-
-////////////////////// SUIT /////////////////////////
-
-type Suit struct {
-	air           float64
-	airCapacity   float64
-	faceplateOpen bool
-}
-
 ////////////////////// PLAYER /////////////////////////
 
 type Player struct {
 	x, y  int
-	items []Item
-
 	vision int
-}
 
+	energy_left, energy_capcacity float64
+
+	pressure_sensor_range int
+	pressure_sensor_on bool
+
+	air_left, air_capacity float64
+	helmet_on bool
+}
+func (p *Player) Init() {
+	p.x, p.y = 1,1
+	p.vision = 5
+
+	p.energy_left, p.energy_capcacity = 1.0, 1.0
+
+	p.pressure_sensor_range = 1
+	p.pressure_sensor_on = false
+
+	p.air_left, p.air_capacity = 1.0, 1.0
+	p.helmet_on = true
+}
 func (p *Player) Move(to_x, to_y int) {
-	//	for e := level.items[p.pos[0]][p.pos[1]].Front(); e != nil; e = e.Next() {
-	//		if e.Value == p {
-	//			level.items[p.pos[0]][p.pos[1]].Remove(e)
-	//			break
-	//		}
-	//	}
 	Dlog.Println("-> Move", to_x, to_y)
 	p.x, p.y = to_x, to_y
 	Dlog.Println("<- Move", p.x, p.y)
-	//	level.items[p.pos[0]][p.pos[1]].PushFront(p)
 }
 func (p *Player) Walk(dir_x, dir_y int, level *Level) bool {
 	px, py := p.x+dir_x, p.y+dir_y
@@ -232,7 +213,7 @@ func NewGame() Game {
 
 	buildTestWalls(&game.level)
 
-	game.player.x, game.player.y, game.player.vision = 1, 1, 5
+	game.player.Init()
 
 	return game
 }

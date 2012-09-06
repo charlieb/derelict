@@ -188,9 +188,7 @@ func (ui *CursesUI) drawMap(level *Level, player *Player) {
 					if i*i+j*j <= player.vision*player.vision {
 						if castRay(player.x, player.y, px, py, level.cells) {
 							ui.mapCache[px][py] = '.'
-							if level.items[px][py].Len() > 0 {
-								ui.mapCache[px][py] = level.items[px][py].Front().Value.(Drawable).Character()
-							} else if level.cells[px][py] != nil {
+							if level.cells[px][py] != nil {
 								ui.mapCache[px][py] = level.cells[px][py].(Drawable).Character()
 							}
 						}
