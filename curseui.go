@@ -1,17 +1,18 @@
 package main
 
 import (
-	"strings"
 	"container/list"
 	"github.com/errnoh/gocurse/curses"
 	"math"
+	"strings"
 )
 
 type UI interface {
 	Run(*Game)
 	Message(string)
-	Menu([]string) (int, bool) // option, aborted
+	Menu([]string) (int, bool)         // option, aborted
 	DirectionPrompt() (int, int, bool) // x, y, abort
+	YesNoPrompt(string) (bool, bool)   // Yes/No, aborted
 }
 type CursesUI struct {
 	screen   *curses.Window
@@ -38,8 +39,12 @@ func (ui *CursesUI) Run(game *Game) {
 
 	ui.drawMap(&game.level, &game.player)
 	for {
-		moved, quit := false, false
-		for !moved {
+		moved, quit := 0, false
+		for moved <= 0 {
+			// If any messages were added to the stack, draw them now
+			if ui.messages.Len() > 0 {
+				ui.drawMessages()
+			}
 			moved, quit = ui.handleKey(ui.screen.Getch(), &game.level, &game.player)
 			Dlog.Println("   RunCurses: ", moved, quit)
 			if quit {
@@ -49,22 +54,15 @@ func (ui *CursesUI) Run(game *Game) {
 				return
 			}
 		}
-		game.level.Iterate()
+		game.level.Iterate(moved)
 		ui.drawMap(&game.level, &game.player)
-
-		// If any messages were added to the stack, draw them now
-		if ui.messages.Len() > 0 {
-			ui.drawMessages()
-			//ui.screen.Getch()
-			//ui.drawMap(&game.level, &game.player)
-		}
 	}
 }
 func (ui *CursesUI) Message(s string) { ui.messages.PushFront(s) }
 func (ui *CursesUI) Menu(s []string) (option int, aborted bool) {
 	var (
-		idx int32 = 'a'
-		max_len int = 0
+		idx     int32 = 'a'
+		max_len int   = 0
 	)
 	for i := 0; i < len(s); i++ {
 		if len(s[i]) > max_len {
@@ -76,12 +74,12 @@ func (ui *CursesUI) Menu(s []string) (option int, aborted bool) {
 	for i := 0; i < len(s); i++ {
 		if s[i] == "-" {
 			ui.screen.Addstr(0, i, "  -------- ", 0)
-			ui.screen.Addstr(11, i, strings.Repeat(" ", max_len - 11), 0)
+			ui.screen.Addstr(11, i, strings.Repeat(" ", max_len-11), 0)
 		} else {
 			ui.screen.Addch(0, i, idx, 0)
 			ui.screen.Addstr(1, i, ": ", 0)
 			ui.screen.Addstr(3, i, s[i], 0)
-			ui.screen.Addstr(3 + len(s[i]) , i, strings.Repeat(" ", max_len - (3 + len(s[i]))), 0)
+			ui.screen.Addstr(3+len(s[i]), i, strings.Repeat(" ", max_len-(3+len(s[i]))), 0)
 			idx++
 		}
 	}
@@ -111,6 +109,17 @@ func (ui *CursesUI) setup() {
 	curses.Cbreak()
 	ui.screen.Keypad(true)
 	curses.Curs_set(0)
+}
+func (ui *CursesUI) YesNoPrompt(message string) (result, aborted bool) {
+	ui.screen.Addstr(0, 0, message, 0)
+	ui.screen.Addstr(len(message), 0, " Y/N ", 0)
+	ch := ui.screen.Getch()
+	if ch == 'y' || ch == 'Y' {
+		return true, false
+	} else if ch == 'n' || ch == 'N' {
+		return false, false
+	}
+	return false, true
 }
 func castRay(x1, y1, x2, y2 int, cells [][]Cell) bool {
 	Dlog.Println("-> castRay", x1, y1, x2, y2)
@@ -171,14 +180,12 @@ func (ui *CursesUI) refresh() {
 	for i := 0; i < len(ui.mapCache); i++ {
 		for j := 0; j < len(ui.mapCache[0]); j++ {
 			ui.screen.Addch(i, j, ui.mapCache[i][j], 0)
-//			if ui.mapCache[i][j] == ' ' || ui.mapCache[i][j] == '.' {
-//				ui.screen.Addch(i, j, '0'+int32(level.air[i][j]), 0)
-//			}
 		}
 	}
 }
 
 func (ui *CursesUI) drawMap(level *Level, player *Player) {
+	Dlog.Println("-> CursesUI.drawMap")
 	for i := -player.vision; i < player.vision; i++ {
 		px := player.x + i
 		if px >= 0 && px < level.x {
@@ -197,10 +204,11 @@ func (ui *CursesUI) drawMap(level *Level, player *Player) {
 			}
 		}
 	}
-	ui.mapCache[player.x][player.y]  = player.Character()
+	ui.mapCache[player.x][player.y] = player.Character()
 	ui.refresh()
+	Dlog.Println("<- CursesUI.drawMap")
 }
-func keyToDir(key int) (int, int, bool) {
+func keyToDir(key int) (int, int, bool) { // dx,dy,abort
 	switch key {
 	case 'h':
 		return -1, 0, false
@@ -231,12 +239,14 @@ func (ui *CursesUI) DirectionPrompt() (x, y int, abort bool) {
 	ui.refresh()
 	return
 }
-func (ui *CursesUI) handleKey(key int, level *Level, player *Player) (moved, quit bool) {
+func (ui *CursesUI) handleKey(key int, level *Level, player *Player) (moved int, quit bool) {
 	Dlog.Printf("-> handleKey key: %c", key)
-	moved, quit = false, false
+	moved, quit = 0, false
 	x, y, abort := keyToDir(key)
 	if !abort {
-		moved = player.Walk(x, y, level)
+		if player.Walk(x, y, level) {
+			moved = 1
+		}
 	} else {
 		switch key {
 		case 'a': // Action

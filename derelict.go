@@ -1,7 +1,9 @@
 package main
 
 import (
+	"fmt"
 	"log"
+	"math/rand"
 	"os"
 )
 
@@ -24,6 +26,9 @@ func (level *Level) Init() {
 		level.cells[i] = make([]Cell, level.y, level.y)
 		level.air[i] = make([]float64, level.y, level.y)
 		level.airBuffer[i] = make([]float64, level.y, level.y)
+		for j := 0; j < level.y; j++ {
+			level.cells[i][j] = new(Floor)
+		}
 	}
 }
 func (level *Level) outerWall() {
@@ -40,54 +45,46 @@ func (level *Level) outerWall() {
 		level.cells[level.x-1][j] = new(Wall)
 	}
 }
-func (level *Level) Iterate() {
+func (level *Level) Iterate(its int) {
 	Dlog.Println("-> Level.Iterate")
-	for i := 0; i < level.x; i++ {
-		for j := 0; j < level.y; j++ {
-			level.airBuffer[i][j] = 0
+	for it := 0; it < its; it++ {
+		for i := 0; i < level.x; i++ {
+			for j := 0; j < level.y; j++ {
+				level.airBuffer[i][j] = 0
+			}
 		}
-	}
 
-	var total, nairs float64
-	for i := 0; i < level.x; i++ {
-		for j := 0; j < level.y; j++ {
-			total = 0
-			nairs = 0
-			Dlog.Printf("   Level.Iterate cell: (%v, %v)\n", i, j)
-			for ii := -1; ii <= 1; ii++ {
-				for jj := -1; jj <= 1; jj++ {
-					if i+ii >= 0 && i+ii < level.x && j+jj >= 0 && j+jj < level.y {
-						Dlog.Printf("   Level.Iterate (%v, %v)\n", i+ii, j+jj)
-						if level.cells[i+ii][j+jj] == nil || level.cells[i+ii][j+jj].Walkable() {
-							total += level.air[i+ii][j+jj]
-							nairs++
+		var total, nairs float64
+		for i := 0; i < level.x; i++ {
+			for j := 0; j < level.y; j++ {
+				total = 0
+				nairs = 0
+				Dlog.Printf("   Level.Iterate cell: (%v, %v)\n", i, j)
+				for ii := -1; ii <= 1; ii++ {
+					for jj := -1; jj <= 1; jj++ {
+						if i+ii >= 0 && i+ii < level.x && j+jj >= 0 && j+jj < level.y {
+							Dlog.Printf("   Level.Iterate (%v, %v)\n", i+ii, j+jj)
+							if level.cells[i+ii][j+jj] == nil || level.cells[i+ii][j+jj].Walkable() {
+								total += level.air[i+ii][j+jj]
+								nairs++
+							}
 						}
 					}
 				}
+				if nairs == 0 || total == 0 {
+					continue
+				}
+				Dlog.Printf("   Level.Iterate (%v, %v) airs: %v, total: %v\n", i, j, nairs, total)
+				level.airBuffer[i][j] = total / nairs
 			}
-			if nairs == 0 || total == 0 {
-				continue
-			}
-			Dlog.Printf("   Level.Iterate (%v, %v) airs: %v, total: %v\n", i, j, nairs, total)
-			level.airBuffer[i][j] = total / nairs
 		}
+		tmp := level.air
+		level.air = level.airBuffer
+		level.airBuffer = tmp
 	}
-	tmp := level.air
-	level.air = level.airBuffer
-	level.airBuffer = tmp
 	Dlog.Println("<- Level.Iterate")
 }
 
-type Cell interface {
-	Walkable() bool
-
-	SeePast() bool
-}
-type Item interface {
-	Name() string
-	Description() string
-	Activate(*Level, *Player)
-}
 type Drawable interface {
 	Character() int32
 }
@@ -95,19 +92,22 @@ type Drawable interface {
 ////////////////////// PLAYER /////////////////////////
 
 type Player struct {
-	x, y  int
+	x, y   int
 	vision int
 
 	energy_left, energy_capcacity float64
 
 	pressure_sensor_range int
-	pressure_sensor_on bool
+	pressure_sensor_on    bool
 
 	air_left, air_capacity float64
-	helmet_on bool
+	helmet_on              bool
+
+	copper, steel int
 }
+
 func (p *Player) Init() {
-	p.x, p.y = 1,1
+	p.x, p.y = 1, 1
 	p.vision = 5
 
 	p.energy_left, p.energy_capcacity = 1.0, 1.0
@@ -137,56 +137,178 @@ func (p *Player) Walk(dir_x, dir_y int, level *Level) bool {
 	return false
 }
 func (p *Player) Character() int32 { return '@' }
-func (p *Player) Action(level *Level, ui UI) bool {
+
+func (p *Player) buildWall(x, y int) {
+
+}
+func (p *Player) Action(level *Level, ui UI) int { // number of turns
 	Dlog.Println("-> Player.Action")
-	action, abort := ui.Menu([]string{"Activate",
-		"-",
-		"Build Wall",
-		"Repair Wall"})
-		Dlog.Println("   Player.Action: ", action, abort)
+	action, abort := ui.Menu([]string{"Salvage",
+		"Repair",
+		"Create"})
+	var (
+		turns       int
+		replacement Cell
+	)
+	Dlog.Println("   Player.Action: ", action, abort)
 	if abort {
 		Dlog.Println("-> Player.Action: false")
-		return false
+		return 0
 	}
-	switch action {
-	case 0: // Activate
-		x, y, abort := ui.DirectionPrompt()
-		if !abort && level.cells[p.x + x][p.y + y] == nil {
+	x, y, abort := ui.DirectionPrompt()
+	if abort {
+		return 0
+	} else if level.cells[p.x+x][p.y+y] != nil {
+		switch action {
+		case 0: // Salvage
+			turns, replacement = level.cells[p.x+x][p.y+y].Salvage(ui, p)
+		case 1: // Repair
+			turns, replacement = level.cells[p.x+x][p.y+y].Repair(ui, p)
+		case 2: // Create
+			action, abort := ui.Menu([]string{"Floor", "Wall", "Conduit", "Wall/Conduit", "Door"})
+			if abort {
+				return 0
+			}
+			var nc Cell
+			switch action {
+			case 0: // Floor
+				nc = new(Floor)
+				turns = nc.Create(ui, p)
+			case 1: // Wall
+				nc = new(Wall)
+				turns = nc.Create(ui, p)
+			case 2: // Conduit
+			case 3: // Wall/Conduit
+			case 4: // Door
+			}
 		}
-	case 1: // Build Wall
-		x, y, abort := ui.DirectionPrompt()
-		if abort {
-			return false
-		} else if level.cells[p.x+x][p.y+y] == nil {
-			level.cells[p.x+x][p.y+y] = new(Wall)
-			ui.Message("Built a wall")
-		} else {
-			ui.Message("That square is occupied")
-		}
-	case 2: // Repair Wall
-		ui.Message("Repair a wall!")
+		level.cells[p.x+x][p.y+y] = replacement
 	}
+
 	Dlog.Println("<- Player.Action: true")
-	return true
+	return turns
 }
 
-////////////////////// /////////////////////////
+////////////////////// CELLS /////////////////////////
+type Cell interface {
+	Walkable() bool
+	SeePast() bool
 
-type sCell struct {
-	visible bool
+	// Returns are turns, replacement Cell
+	Salvage(UI, *Player) (int, Cell)
+	Repair(UI, *Player) (int, Cell)
+	Create(UI, *Player) int
 }
 
-func (c *sCell) Walkable() bool { return true }
-func (c *sCell) SeePast() bool  { return true }
+type Vacuum struct{}
+
+func (c *Vacuum) Walkable() bool   { return true }
+func (c *Vacuum) SeePast() bool    { return true }
+func (c *Vacuum) Character() int32 { return ' ' }
+func (c *Vacuum) Salvage(ui UI, p *Player) (int, Cell) {
+	ui.Message("There is nothing to salvage in a vacuum")
+	return 0, c
+}
+func (c *Vacuum) Repair(ui UI, p *Player) (int, Cell) {
+	ui.Message("You cannot repair a vacuum")
+	return 0, c
+}
+func (c *Vacuum) Create(ui UI, p *Player) int {
+	ui.Message("Nature abhors a vacuum")
+	return 0
+}
+
+type Floor struct{}
+
+func (c *Floor) Walkable() bool   { return true }
+func (c *Floor) SeePast() bool    { return true }
+func (c *Floor) Character() int32 { return '.' }
+func (c *Floor) Salvage(ui UI, p *Player) (turns int, replacement Cell) {
+	turns = 0
+	replacement = c
+
+	sure, aborted := ui.YesNoPrompt("Salvage floor?")
+	if !aborted && sure {
+		st := rand.Intn(10)
+		p.steel += st
+		turns = rand.Intn(10)
+		replacement = new(Vacuum)
+		ui.Message(fmt.Sprintf("You salvage %v steel in %v turns", st, turns))
+	}
+	return
+}
+func (c *Floor) Repair(ui UI, p *Player) (int, Cell) {
+	ui.Message("The floor does not need to be repaired")
+	return 0, c
+}
+func genericCreate(max_steel, max_copper, max_turns int, name string, ui UI, p *Player) (turns int) {
+	st := rand.Intn(max_steel)
+	cu := rand.Intn(max_copper)
+	turns = rand.Intn(max_turns)
+
+	p.steel -= st
+	p.copper -= cu
+	if p.steel < 0 && p.copper < 0 {
+		ui.Message(fmt.Sprintf("You run out of both steel and copper after %v turns", turns))
+		p.steel = 0
+		p.copper = 0
+	} else if p.steel < 0 {
+		ui.Message(fmt.Sprintf("You run out of steel after %v turns", turns))
+		p.steel = 0
+	} else if p.copper < 0 {
+		ui.Message(fmt.Sprintf("You run out of copper after %v turns", turns))
+		p.copper = 0
+	} else {
+		ui.Message(fmt.Sprintf("Used %v steel and %v copper to create a %v section in %v turns",
+			st, cu, name, turns))
+	}
+	return
+}
+func (c *Floor) Create(ui UI, p *Player) int {
+	return genericCreate(10, 0, 10, "floor", ui, p)
+}
 
 type Wall struct {
-	sCell
+	damaged bool
 }
 
 func (w *Wall) Walkable() bool   { return false }
 func (w *Wall) Character() int32 { return '#' }
 func (w *Wall) SeePast() bool    { return false }
+func (c *Wall) Salvage(ui UI, p *Player) (turns int, replacement Cell) {
+	turns = 0
+	replacement = c
 
+	st := rand.Intn(10)
+	p.steel += st
+	turns = rand.Intn(10)
+	replacement = new(Floor)
+	ui.Message(fmt.Sprintf("You salvage %v steel in %v turns", st, turns))
+	return
+}
+func (c *Wall) Repair(ui UI, p *Player) (turns int, replacement Cell) {
+	turns = 1 // Inpecting the wall takes at least 1 turn
+	replacement = c
+
+	if c.damaged {
+		st := rand.Intn(5)
+		p.steel -= st
+		turns = rand.Intn(5)
+		if p.steel < 0 {
+			ui.Message(fmt.Sprintf("You run out of steel after %v turns", turns))
+			p.steel = 0
+		} else {
+			c.damaged = false
+			ui.Message(fmt.Sprintf("Used %v steel to repair the wall in %v turns", st, turns))
+		}
+	} else {
+		ui.Message("The wall does not need to be repaired")
+	}
+	return
+}
+func (c *Wall) Create(ui UI, p *Player) (turns int) {
+	return genericCreate(10, 0, 10, "wall", ui, p)
+}
 func buildTestWalls(level *Level) {
 	for i := 2; i < 5; i++ {
 		level.cells[i][2] = new(Wall)
