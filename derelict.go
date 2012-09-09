@@ -13,12 +13,14 @@ const (
 	SALVAGE int = 0
 	REPAIR  int = 1
 	CREATE  int = 2
+	ACTIVATE int = 3
 
 	FLOOR        int = 0
 	WALL         int = 1
 	CONDUIT      int = 2
 	WALL_CONDUIT int = 3
 	DOOR         int = 4
+	DOOR_CONDUIT int = 5
 )
 
 ////////////////////// LEVEL /////////////////////////
@@ -62,6 +64,7 @@ func (level *Level) Iterate(its int) {
 	for it := 0; it < its; it++ {
 		for i := 0; i < level.x; i++ {
 			for j := 0; j < level.y; j++ {
+				level.cells[i][j].Iterate(i, j, level)
 				level.airBuffer[i][j] = 0
 			}
 		}
@@ -76,7 +79,7 @@ func (level *Level) Iterate(its int) {
 					for jj := -1; jj <= 1; jj++ {
 						if i+ii >= 0 && i+ii < level.x && j+jj >= 0 && j+jj < level.y {
 							Dlog.Printf("   Level.Iterate (%v, %v)\n", i+ii, j+jj)
-							if level.cells[i+ii][j+jj] == nil || level.cells[i+ii][j+jj].Walkable() {
+							if level.cells[i+ii][j+jj] == nil || level.cells[i+ii][j+jj].AirFlows() {
 								total += level.air[i+ii][j+jj]
 								nairs++
 							}
@@ -153,7 +156,7 @@ func (p *Player) Character() int32 { return '@' }
 func (p *Player) buildWall(x, y int) {
 
 }
-func (p *Player) Action(level *Level, ui UI, action_id int)  int { // number of turns
+func (p *Player) Action(level *Level, ui UI, action_id int)  (turns int) {
 	Dlog.Println("-> Player.Action")
 	abort := false
 	if action_id == NONE {
@@ -162,10 +165,6 @@ func (p *Player) Action(level *Level, ui UI, action_id int)  int { // number of 
 				"Repair",
 				"Create"})
 	}
-	var (
-		turns       int
-		replacement Cell
-	)
 	Dlog.Println("   Player.Action: ", action_id, abort)
 	if abort {
 		Dlog.Println("-> Player.Action: false")
@@ -175,28 +174,32 @@ func (p *Player) Action(level *Level, ui UI, action_id int)  int { // number of 
 	if abort {
 		return 0
 	} else if level.cells[p.x+x][p.y+y] != nil {
+		replacement := level.cells[p.x+x][p.y+y]
 		switch action_id {
+		case ACTIVATE:
+			turns = level.cells[p.x+x][p.y+y].Activate(ui)
 		case SALVAGE:
 			turns, replacement = level.cells[p.x+x][p.y+y].Salvage(ui, p)
 		case REPAIR:
 			turns, replacement = level.cells[p.x+x][p.y+y].Repair(ui, p)
 		case CREATE:
 			cell, abort := ui.Menu("Create what?",
-				[]string{"Floor", "Wall", "Conduit", "Wall/Conduit", "Door"})
+				[]string{"Floor", "Wall", "Conduit", "Wall/Conduit", "Door", "Door/Conduit"})
 			if abort {
 				return 0
 			}
 			var nc Cell
 			switch cell {
-			case 0: // Floor
+			case FLOOR:
 				nc = new(Floor)
 				turns = nc.Create(ui, p)
-			case 1: // Wall
+			case WALL:
 				nc = new(Wall)
 				turns = nc.Create(ui, p)
-			case 2: // Conduit
-			case 3: // Wall/Conduit
-			case 4: // Door
+			case CONDUIT:
+			case WALL_CONDUIT:
+			case DOOR:
+			case DOOR_CONDUIT:
 			}
 			if turns > 0 {
 				replacement = nc

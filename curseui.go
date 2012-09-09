@@ -251,7 +251,7 @@ func (ui *CursesUI) handleKey(key int, level *Level, player *Player) (moved int,
 		}
 	} else {
 		switch key {
-		case 'a': // Action
+		case 'm': // Action Menu
 			moved = player.Action(level, ui, NONE)
 		case 'c': // Create
 			moved = player.Action(level, ui, CREATE)
@@ -259,6 +259,8 @@ func (ui *CursesUI) handleKey(key int, level *Level, player *Player) (moved int,
 			moved = player.Action(level, ui, REPAIR)
 		case 's': // Salvage
 			moved = player.Action(level, ui, SALVAGE)
+		case 'a': // Activate
+			moved = player.Action(level, ui, ACTIVATE)
 		case 'q':
 			quit = true
 		}
