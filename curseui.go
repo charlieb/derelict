@@ -10,7 +10,7 @@ import (
 type UI interface {
 	Run(*Game)
 	Message(string)
-	Menu(string, []string) (int, bool)         // option, aborted
+	Menu(string, []string) (int, bool) // option, aborted
 	DirectionPrompt() (int, int, bool) // x, y, abort
 	YesNoPrompt(string) (bool, bool)   // Yes/No, aborted
 }
@@ -253,6 +253,12 @@ func (ui *CursesUI) handleKey(key int, level *Level, player *Player) (moved int,
 		switch key {
 		case 'a': // Action
 			moved = player.Action(level, ui, NONE)
+		case 'c': // Create
+			moved = player.Action(level, ui, CREATE)
+		case 'r': // Repair
+			moved = player.Action(level, ui, REPAIR)
+		case 's': // Salvage
+			moved = player.Action(level, ui, SALVAGE)
 		case 'q':
 			quit = true
 		}
