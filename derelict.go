@@ -181,6 +181,9 @@ func (p *Player) Action(level *Level, ui UI) int { // number of turns
 			case 3: // Wall/Conduit
 			case 4: // Door
 			}
+			if turns > 0 {
+				replacement = nc
+			}
 		}
 		level.cells[p.x+x][p.y+y] = replacement
 	}
@@ -231,7 +234,7 @@ func (c *Floor) Salvage(ui UI, p *Player) (turns int, replacement Cell) {
 	if !aborted && sure {
 		st := rand.Intn(10)
 		p.steel += st
-		turns = rand.Intn(10)
+		turns = 1 + rand.Intn(9)
 		replacement = new(Vacuum)
 		ui.Message(fmt.Sprintf("You salvage %v steel in %v turns", st, turns))
 	}
@@ -242,9 +245,14 @@ func (c *Floor) Repair(ui UI, p *Player) (int, Cell) {
 	return 0, c
 }
 func genericCreate(max_steel, max_copper, max_turns int, name string, ui UI, p *Player) (turns int) {
-	st := rand.Intn(max_steel)
-	cu := rand.Intn(max_copper)
-	turns = rand.Intn(max_turns)
+	var st, cu int = 0,0
+	if max_steel > 0 {
+		st = rand.Intn(max_steel)
+	}
+	if max_copper > 0 {
+		cu = rand.Intn(max_copper)
+	}
+	turns = 1 + rand.Intn(max_turns - 1)
 
 	p.steel -= st
 	p.copper -= cu
@@ -281,7 +289,7 @@ func (c *Wall) Salvage(ui UI, p *Player) (turns int, replacement Cell) {
 
 	st := rand.Intn(10)
 	p.steel += st
-	turns = rand.Intn(10)
+	turns = 1 + rand.Intn(9)
 	replacement = new(Floor)
 	ui.Message(fmt.Sprintf("You salvage %v steel in %v turns", st, turns))
 	return
@@ -293,7 +301,7 @@ func (c *Wall) Repair(ui UI, p *Player) (turns int, replacement Cell) {
 	if c.damaged {
 		st := rand.Intn(5)
 		p.steel -= st
-		turns = rand.Intn(5)
+		turns = 1 + rand.Intn(4)
 		if p.steel < 0 {
 			ui.Message(fmt.Sprintf("You run out of steel after %v turns", turns))
 			p.steel = 0
