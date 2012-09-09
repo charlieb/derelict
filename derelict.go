@@ -143,9 +143,10 @@ func (p *Player) buildWall(x, y int) {
 }
 func (p *Player) Action(level *Level, ui UI) int { // number of turns
 	Dlog.Println("-> Player.Action")
-	action, abort := ui.Menu([]string{"Salvage",
-		"Repair",
-		"Create"})
+	action, abort := ui.Menu("Choose an Action:",
+		[]string{"Salvage",
+			"Repair",
+			"Create"})
 	var (
 		turns       int
 		replacement Cell
@@ -165,7 +166,7 @@ func (p *Player) Action(level *Level, ui UI) int { // number of turns
 		case 1: // Repair
 			turns, replacement = level.cells[p.x+x][p.y+y].Repair(ui, p)
 		case 2: // Create
-			action, abort := ui.Menu([]string{"Floor", "Wall", "Conduit", "Wall/Conduit", "Door"})
+			action, abort := ui.Menu("Create what?", []string{"Floor", "Wall", "Conduit", "Wall/Conduit", "Door"})
 			if abort {
 				return 0
 			}
@@ -245,14 +246,14 @@ func (c *Floor) Repair(ui UI, p *Player) (int, Cell) {
 	return 0, c
 }
 func genericCreate(max_steel, max_copper, max_turns int, name string, ui UI, p *Player) (turns int) {
-	var st, cu int = 0,0
+	var st, cu int = 0, 0
 	if max_steel > 0 {
 		st = rand.Intn(max_steel)
 	}
 	if max_copper > 0 {
 		cu = rand.Intn(max_copper)
 	}
-	turns = 1 + rand.Intn(max_turns - 1)
+	turns = 1 + rand.Intn(max_turns-1)
 
 	p.steel -= st
 	p.copper -= cu

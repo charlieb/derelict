@@ -10,7 +10,7 @@ import (
 type UI interface {
 	Run(*Game)
 	Message(string)
-	Menu([]string) (int, bool)         // option, aborted
+	Menu(string, []string) (int, bool)         // option, aborted
 	DirectionPrompt() (int, int, bool) // x, y, abort
 	YesNoPrompt(string) (bool, bool)   // Yes/No, aborted
 }
@@ -59,10 +59,10 @@ func (ui *CursesUI) Run(game *Game) {
 	}
 }
 func (ui *CursesUI) Message(s string) { ui.messages.PushFront(s) }
-func (ui *CursesUI) Menu(s []string) (option int, aborted bool) {
+func (ui *CursesUI) Menu(title string, s []string) (option int, aborted bool) {
 	var (
 		idx     int32 = 'a'
-		max_len int   = 0
+		max_len int   = len(title)
 	)
 	for i := 0; i < len(s); i++ {
 		if len(s[i]) > max_len {
@@ -71,19 +71,21 @@ func (ui *CursesUI) Menu(s []string) (option int, aborted bool) {
 	}
 	max_len += 4 // 3 for "x: " 1 for the space after
 
+	// All the i+1 below are due to the title line offset
+	ui.screen.Addstr(0, 0, title, 0)
 	for i := 0; i < len(s); i++ {
 		if s[i] == "-" {
-			ui.screen.Addstr(0, i, "  -------- ", 0)
-			ui.screen.Addstr(11, i, strings.Repeat(" ", max_len-11), 0)
+			ui.screen.Addstr(0, i+1, "  -------- ", 0)
+			ui.screen.Addstr(11, i+1, strings.Repeat(" ", max_len-11), 0)
 		} else {
-			ui.screen.Addch(0, i, idx, 0)
-			ui.screen.Addstr(1, i, ": ", 0)
-			ui.screen.Addstr(3, i, s[i], 0)
-			ui.screen.Addstr(3+len(s[i]), i, strings.Repeat(" ", max_len-(3+len(s[i]))), 0)
+			ui.screen.Addch(0, i+1, idx, 0)
+			ui.screen.Addstr(1, i+1, ": ", 0)
+			ui.screen.Addstr(3, i+1, s[i], 0)
+			ui.screen.Addstr(3+len(s[i]), i+1, strings.Repeat(" ", max_len-(3+len(s[i]))), 0)
 			idx++
 		}
 	}
-	ui.screen.Addstr(0, len(s), strings.Repeat(" ", max_len), 0)
+	ui.screen.Addstr(0, len(s)+1, strings.Repeat(" ", max_len), 0)
 	option = ui.screen.Getch() - 'a'
 	if option < 0 || option >= int(idx) {
 		aborted = true
