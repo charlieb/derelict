@@ -252,7 +252,7 @@ func (ui *CursesUI) handleKey(key int, level *Level, player *Player) (moved int,
 	} else {
 		switch key {
 		case 'a': // Action
-			moved = player.Action(level, ui)
+			moved = player.Action(level, ui, NONE)
 		case 'q':
 			quit = true
 		}

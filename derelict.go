@@ -9,6 +9,20 @@ import (
 
 var Dlog *log.Logger
 
+const (
+	NONE int = -1
+
+	SALVAGE int = 0
+	REPAIR  int = 1
+	CREATE  int = 2
+
+	FLOOR        int = 0
+	WALL         int = 1
+	CONDUIT      int = 2
+	WALL_CONDUIT int = 3
+	DOOR         int = 4
+)
+
 ////////////////////// LEVEL /////////////////////////
 
 type Level struct {
@@ -141,17 +155,20 @@ func (p *Player) Character() int32 { return '@' }
 func (p *Player) buildWall(x, y int) {
 
 }
-func (p *Player) Action(level *Level, ui UI) int { // number of turns
+func (p *Player) Action(level *Level, ui UI, action_id int)  int { // number of turns
 	Dlog.Println("-> Player.Action")
-	action, abort := ui.Menu("Choose an Action:",
-		[]string{"Salvage",
-			"Repair",
-			"Create"})
+	abort := false
+	if action_id == NONE {
+		action_id, abort = ui.Menu("Choose an Action:",
+			[]string{"Salvage",
+				"Repair",
+				"Create"})
+	}
 	var (
 		turns       int
 		replacement Cell
 	)
-	Dlog.Println("   Player.Action: ", action, abort)
+	Dlog.Println("   Player.Action: ", action_id, abort)
 	if abort {
 		Dlog.Println("-> Player.Action: false")
 		return 0
@@ -160,18 +177,19 @@ func (p *Player) Action(level *Level, ui UI) int { // number of turns
 	if abort {
 		return 0
 	} else if level.cells[p.x+x][p.y+y] != nil {
-		switch action {
-		case 0: // Salvage
+		switch action_id {
+		case SALVAGE:
 			turns, replacement = level.cells[p.x+x][p.y+y].Salvage(ui, p)
-		case 1: // Repair
+		case REPAIR:
 			turns, replacement = level.cells[p.x+x][p.y+y].Repair(ui, p)
-		case 2: // Create
-			action, abort := ui.Menu("Create what?", []string{"Floor", "Wall", "Conduit", "Wall/Conduit", "Door"})
+		case CREATE:
+			cell, abort := ui.Menu("Create what?",
+				[]string{"Floor", "Wall", "Conduit", "Wall/Conduit", "Door"})
 			if abort {
 				return 0
 			}
 			var nc Cell
-			switch action {
+			switch cell {
 			case 0: // Floor
 				nc = new(Floor)
 				turns = nc.Create(ui, p)
