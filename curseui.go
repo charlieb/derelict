@@ -143,8 +143,11 @@ func castRay(x1, y1, x2, y2 int, cells [][]Cell) bool {
 		} else {
 			ddx = -1
 		}
-		ddx = 1
-		ddy = dy / dx
+		if dy > 0 {
+			ddy = math.Abs(dy / dx)
+		} else {
+			ddy = -math.Abs(dy / dx)
+		}
 		Dlog.Printf("   castRay: dx = %v, dy = %v, ddx = %v, ddy = %v", dx, dy, ddx, ddy)
 		for i := 0.0; i < math.Abs(dx); i++ {
 			cx, cy := int(x1f+i*ddx), int(y1f+i*ddy)
@@ -157,11 +160,15 @@ func castRay(x1, y1, x2, y2 int, cells [][]Cell) bool {
 			}
 		}
 	} else {
-		ddx = dx / dy
 		if dy > 0 {
 			ddy = 1
 		} else {
 			ddy = -1
+		}
+		if dx > 0 {
+			ddx = math.Abs(dx / dy)
+		} else {
+			ddx = -math.Abs(dx / dy)
 		}
 		Dlog.Printf("   castRay: dx = %v, dy = %v, ddx = %v, ddy = %v", dx, dy, ddx, ddy)
 		for i := 0.0; i < math.Abs(dy); i++ {
@@ -196,10 +203,8 @@ func (ui *CursesUI) drawMap(level *Level, player *Player) {
 				if py >= 0 && py < level.y {
 					if i*i+j*j <= player.vision*player.vision {
 						if castRay(player.x, player.y, px, py, level.cells) {
-							ui.mapCache[px][py] = '.'
-							if level.cells[px][py] != nil {
-								ui.mapCache[px][py] = level.cells[px][py].(Drawable).Character()
-							}
+							ui.mapCache[px][py] = level.cells[px][py].(Drawable).Character()
+							Dlog.Printf("   CurseUI.drawMap: %v %v drawn %c\n", px, py, ui.mapCache[px][py])
 						}
 					}
 				}
