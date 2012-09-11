@@ -212,13 +212,29 @@ func (p *Player) Action(level *Level, ui UI, action_id int)  (turns int) {
 	return turns
 }
 
-func buildTestWalls(level *Level) {
-	for i := 2; i < 5; i++ {
-		level.cells[i][2] = new(Wall)
-	}
-	for j := 3; j < 5; j++ {
-		level.cells[2][j] = new(Wall)
-	}
+func buildTestLevel(level *Level) {
+	// Two outer walls
+	for i := 0; i < 31; i++ { level.cells[i][20] = new(Wall) }
+	for i := 0; i < 20; i++ { level.cells[30][i] = new(Wall) }
+
+	// Inner walls
+	for i := 0; i < 15;  i++ { level.cells[8][i] = new(Wall) }
+	for i := 0; i < 18;  i++ { level.cells[i][14] = new(Wall) }
+	for i := 15; i < 20; i++ { level.cells[12][i] = new(Wall) }
+	for i := 8; i < 18;  i++ { level.cells[i][8] = new(Wall) }
+	for i := 0; i < 20;  i++ { level.cells[18][i] = new(Wall) }
+	for i := 0; i < 20;  i++ { level.cells[21][i] = new(Wall) }
+	for i := 21; i < 30; i++ { level.cells[i][10] = new(Wall) }
+
+	// Doors
+	level.cells[0][2] = new(Door)
+	level.cells[8][9] = new(Door)
+	level.cells[14][8] = new(Door)
+	level.cells[14][14] = new(Door)
+	level.cells[12][17] = new(Door)
+	level.cells[18][11] = new(Door)
+	level.cells[21][6] = new(Door)
+	level.cells[21][14] = new(Door)
 }
 
 /////////////////// GAME MAIN ///////////////////
@@ -236,7 +252,7 @@ func NewGame() Game {
 	game.level.air[10][10] = 9
 	game.level.air[10][11] = 9
 
-	buildTestWalls(&game.level)
+	buildTestLevel(&game.level)
 
 	game.player.Init()
 
