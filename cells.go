@@ -20,7 +20,93 @@ type Cell interface {
 
 	Iterate(int, int, *Level) // x, y positions and the level
 }
+////////////// GENERIC ////////////////////
+func genericSalvage(max_steel, max_copper, max_turns int, ui UI, p *Player) (turns int) {
+	var st, cu int = 0, 0
+	if max_steel > 0 {
+		st = rand.Intn(max_steel)
+	}
+	if max_copper > 0 {
+		cu = rand.Intn(max_copper)
+	}
+	turns = 1 + rand.Intn(max_turns-1)
 
+	p.steel += st
+	p.copper += cu
+	if st == 0 && cu == 0 {
+		ui.Message(fmt.Sprintf("You fail to salvage any useful metals", turns))
+	} else if cu == 0 {
+		ui.Message(fmt.Sprintf("You salvage %v steel in %v turns", st, turns))
+	} else if st == 0 {
+		ui.Message(fmt.Sprintf("You salvage %v copper in %v turns", cu, turns))
+	} else {
+		ui.Message(fmt.Sprintf("You salvage %v steel and %v copper in %v turns", st, cu, turns))
+	}
+	return
+}
+func genericRepair(damaged *bool, max_steel, max_copper, max_turns int, name string, ui UI, p *Player) (turns int) {
+	turns = 1 // Inpecting the "name" takes at least 1 turn
+
+	if *damaged {
+		var st, cu int = 0,0
+		if max_steel > 0 {
+			st = rand.Intn(max_steel)
+		}
+		if max_copper > 0 {
+			cu = rand.Intn(max_copper)
+		}
+		p.steel -= st
+		p.copper -= cu
+		turns = 1 + rand.Intn(max_turns -1)
+		if p.steel < 0 && p.copper < 0 {
+			ui.Message(fmt.Sprintf("You run out of steel and copper after %v turns", turns))
+			p.steel = 0
+			p.copper = 0
+		} else if p.steel < 0 {
+			ui.Message(fmt.Sprintf("You run out of steel after %v turns", turns))
+			p.steel = 0
+		} else if p.copper < 0 {
+			ui.Message(fmt.Sprintf("You run out of copper after %v turns", turns))
+			p.copper = 0
+		} else {
+			*damaged = false
+			ui.Message(fmt.Sprintf("Used %v steel and $v copper to repair the %v in %v turns",
+				st, cu, name, turns))
+		}
+	} else {
+		ui.Message(fmt.Sprintf("The %v does not need to be repaired", name))
+	}
+	return
+}
+func genericCreate(max_steel, max_copper, max_turns int, name string, ui UI, p *Player) (turns int) {
+	var st, cu int = 0, 0
+	if max_steel > 0 {
+		st = rand.Intn(max_steel)
+	}
+	if max_copper > 0 {
+		cu = rand.Intn(max_copper)
+	}
+	turns = 1 + rand.Intn(max_turns-1)
+
+	p.steel -= st
+	p.copper -= cu
+	if p.steel < 0 && p.copper < 0 {
+		ui.Message(fmt.Sprintf("You run out of both steel and copper after %v turns", turns))
+		p.steel = 0
+		p.copper = 0
+	} else if p.steel < 0 {
+		ui.Message(fmt.Sprintf("You run out of steel after %v turns", turns))
+		p.steel = 0
+	} else if p.copper < 0 {
+		ui.Message(fmt.Sprintf("You run out of copper after %v turns", turns))
+		p.copper = 0
+	} else {
+		ui.Message(fmt.Sprintf("Used %v steel and %v copper to create a %v section in %v turns",
+			st, cu, name, turns))
+	}
+	return
+}
+///////////// VACUUM ////////////////////
 type Vacuum struct{}
 
 func (c *Vacuum) Walkable() bool   { return true }
@@ -58,11 +144,8 @@ func (c *Floor) Salvage(ui UI, p *Player) (turns int, replacement Cell) {
 
 	sure, aborted := ui.YesNoPrompt("Salvage floor?")
 	if !aborted && sure {
-		st := rand.Intn(10)
-		p.steel += st
-		turns = 1 + rand.Intn(9)
+		turns = genericSalvage(10, 0, 10, ui, p)
 		replacement = new(Vacuum)
-		ui.Message(fmt.Sprintf("You salvage %v steel in %v turns", st, turns))
 	}
 	return
 }
@@ -70,34 +153,7 @@ func (c *Floor) Repair(ui UI, p *Player) (int, Cell) {
 	ui.Message("The floor does not need to be repaired")
 	return 0, c
 }
-func genericCreate(max_steel, max_copper, max_turns int, name string, ui UI, p *Player) (turns int) {
-	var st, cu int = 0, 0
-	if max_steel > 0 {
-		st = rand.Intn(max_steel)
-	}
-	if max_copper > 0 {
-		cu = rand.Intn(max_copper)
-	}
-	turns = 1 + rand.Intn(max_turns-1)
 
-	p.steel -= st
-	p.copper -= cu
-	if p.steel < 0 && p.copper < 0 {
-		ui.Message(fmt.Sprintf("You run out of both steel and copper after %v turns", turns))
-		p.steel = 0
-		p.copper = 0
-	} else if p.steel < 0 {
-		ui.Message(fmt.Sprintf("You run out of steel after %v turns", turns))
-		p.steel = 0
-	} else if p.copper < 0 {
-		ui.Message(fmt.Sprintf("You run out of copper after %v turns", turns))
-		p.copper = 0
-	} else {
-		ui.Message(fmt.Sprintf("Used %v steel and %v copper to create a %v section in %v turns",
-			st, cu, name, turns))
-	}
-	return
-}
 func (c *Floor) Create(ui UI, p *Player) int {
 	return genericCreate(10, 0, 10, "floor", ui, p)
 }
@@ -117,35 +173,12 @@ func (w *Wall) Character() int32 { return '#' }
 func (w *Wall) SeePast() bool    { return false }
 func (w *Wall) AirFlows() bool    { return !w.damaged }
 func (c *Wall) Salvage(ui UI, p *Player) (turns int, replacement Cell) {
-	turns = 0
-	replacement = c
-
-	st := rand.Intn(10)
-	p.steel += st
-	turns = 1 + rand.Intn(9)
+	turns = genericSalvage(10, 0, 10, ui, p)
 	replacement = new(Floor)
-	ui.Message(fmt.Sprintf("You salvage %v steel in %v turns", st, turns))
 	return
 }
 func (c *Wall) Repair(ui UI, p *Player) (turns int, replacement Cell) {
-	turns = 1 // Inpecting the wall takes at least 1 turn
-	replacement = c
-
-	if c.damaged {
-		st := rand.Intn(5)
-		p.steel -= st
-		turns = 1 + rand.Intn(4)
-		if p.steel < 0 {
-			ui.Message(fmt.Sprintf("You run out of steel after %v turns", turns))
-			p.steel = 0
-		} else {
-			c.damaged = false
-			ui.Message(fmt.Sprintf("Used %v steel to repair the wall in %v turns", st, turns))
-		}
-	} else {
-		ui.Message("The wall does not need to be repaired")
-	}
-	return
+	return genericRepair(&c.damaged, 5, 0, 5, "wall", ui, p), c
 }
 func (c *Wall) Create(ui UI, p *Player) (turns int) {
 	return genericCreate(10, 0, 10, "wall", ui, p)
@@ -171,47 +204,12 @@ func (d *Door) Character() int32 {
 func (d *Door) SeePast() bool { return d.open }
 func (d *Door) AirFlows() bool { return d.open || d.damaged }
 func (c *Door) Salvage(ui UI, p *Player) (turns int, replacement Cell) {
-	turns = 0
-	replacement = c
-
-	st := rand.Intn(10)
-	cu := rand.Intn(10)
-	p.steel += st
-	p.copper += cu
-	turns = 1 + rand.Intn(14)
+	turns = genericSalvage(10, 10, 15, ui, p)
 	replacement = new(Floor)
-	ui.Message(fmt.Sprintf("You salvage %v steel and %v copper in %v turns", st, cu, turns))
 	return
 }
-func (c *Door) Repair(ui UI, p *Player) (turns int, replacement Cell) {
-	turns = 1 // Inpecting the door takes at least 1 turn
-	replacement = c
-
-	if c.damaged {
-		st := rand.Intn(5)
-		cu := rand.Intn(5)
-		p.steel -= st
-		p.copper -= cu
-		turns = 1 + rand.Intn(9)
-		if p.steel < 0 && p.copper < 0 {
-			ui.Message(fmt.Sprintf("You run out of steel and copper after %v turns", turns))
-			p.steel = 0
-			p.copper = 0
-		} else if p.steel < 0 {
-			ui.Message(fmt.Sprintf("You run out of steel after %v turns", turns))
-			p.steel = 0
-		} else if p.copper < 0 {
-			ui.Message(fmt.Sprintf("You run out of copper after %v turns", turns))
-			p.copper = 0
-		} else {
-			c.damaged = false
-			ui.Message(fmt.Sprintf("Used %v steel and $v copper to repair the door in %v turns",
-				st, cu, turns))
-		}
-	} else {
-		ui.Message("The door does not need to be repaired")
-	}
-	return
+func (c *Door) Repair(ui UI, p *Player) (int, Cell) {
+	return genericRepair(&c.damaged, 5, 5, 10, "door", ui, p), c
 }
 func (c *Door) Create(ui UI, p *Player) (turns int) {
 	return genericCreate(10, 0, 10, "wall", ui, p)
@@ -230,3 +228,33 @@ func (c *Door) Activate(ui UI) int {
 	return 1
 }
 func (c *Door) Iterate(x, y int, l *Level) { }
+
+//////////////// CONDUIT /////////////////////
+
+type Conduit struct {
+	energy float32
+	damaged bool
+}
+
+func (c *Conduit) Walkable() bool   { return true }
+func (c *Conduit) SeePast() bool    { return true }
+func (c *Conduit) AirFlows() bool    { return true }
+func (c *Conduit) Character() int32 { return '-' }
+func (c *Conduit) Salvage(ui UI, p *Player) (turns int, replacement Cell) {
+	turns = genericSalvage(0, 10, 10, ui, p)
+	replacement = new(Floor)
+	return 0, c
+}
+func (c *Conduit) Repair(ui UI, p *Player) (int, Cell) {
+	return genericRepair(&c.damaged, 0, 10, 5, "conduit", ui, p), c
+}
+func (c *Conduit) Create(ui UI, p *Player) int {
+	return genericCreate(0, 15, 10, "conduit", ui, p)
+}
+func (c *Conduit) Activate(ui UI) int {
+	ui.Message("You activate the vacuum, the universe is re-created in a flash")
+	return 1
+}
+func (c *Conduit) Iterate(x, y int, level *Level) { level.air[x][y] = 0 }
+
+
