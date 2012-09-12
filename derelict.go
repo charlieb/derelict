@@ -41,7 +41,7 @@ func (level *Level) Init() {
 		level.air[i] = make([]float64, level.y, level.y)
 		level.airBuffer[i] = make([]float64, level.y, level.y)
 		for j := 0; j < level.y; j++ {
-			level.cells[i][j] = new(Floor)
+			level.cells[i][j] = new(Vacuum)
 		}
 	}
 }
@@ -213,8 +213,16 @@ func (p *Player) Action(level *Level, ui UI, action_id int)  (turns int) {
 }
 
 func buildTestLevel(level *Level) {
-	// Two outer walls
+	// Floor
+	for i := 0; i < 31; i++ {
+		for j := 0; j < 20; j++ {
+			level.cells[i][j] = new(Floor)
+		}
+	}
+	// Outer walls
+	for i := 0; i < 31; i++ { level.cells[i][0] = new(Wall) }
 	for i := 0; i < 31; i++ { level.cells[i][20] = new(Wall) }
+	for i := 0; i < 20; i++ { level.cells[0][i] = new(Wall) }
 	for i := 0; i < 20; i++ { level.cells[30][i] = new(Wall) }
 
 	// Inner walls
