@@ -8,36 +8,55 @@ import (
 )
 
 type UI interface {
-	Run(*Game)
+	Run()
 	Message(string)
 	Menu(string, []string) (int, bool) // option, aborted
 	DirectionPrompt() (int, int, bool) // x, y, abort
 	YesNoPrompt(string) (bool, bool)   // Yes/No, aborted
 }
+const (
+	none = iota
+	revealMap
+	airOverlay
+	energyOverlay
+	maxDebugMode
+)
+
 type CursesUI struct {
 	screen   *curses.Window
 	mapCache [][]int32
 	messages list.List
+
+	level *Level
+	player *Player
+
+	debugMode int
 }
 
-func (ui *CursesUI) Run(game *Game) {
+func NewCursesUI(level *Level, player *Player) UI {
+	ui := new(CursesUI)
+	ui.level = level
+	ui.player = player
+	ui.debugMode = none
+
+	// Init the mapCache to store seen parts of the level
+	ui.mapCache = make([][]int32, level.x, level.x)
+	for i := 0; i < level.x; i++ {
+		ui.mapCache[i] = make([]int32, level.y, level.y)
+		for j := 0; j < level.y; j++ {
+			ui.mapCache[i][j] = ' '
+		}
+	}
+	return ui
+}
+func (ui *CursesUI) Run() {
 	// Initscr() initializes the terminal in curses mode.
 	ui.screen, _ = curses.Initscr()
 	// Endwin must be called when done.
 	defer curses.Endwin()
 
 	ui.setup()
-
-	// Init the mapCache to store seen parts of the level
-	ui.mapCache = make([][]int32, game.level.x, game.level.x)
-	for i := 0; i < game.level.x; i++ {
-		ui.mapCache[i] = make([]int32, game.level.y, game.level.y)
-		for j := 0; j < game.level.y; j++ {
-			ui.mapCache[i][j] = ' '
-		}
-	}
-
-	ui.drawMap(&game.level, &game.player)
+	ui.drawMap()
 	for {
 		moved, quit := 0, false
 		for moved <= 0 {
@@ -45,7 +64,7 @@ func (ui *CursesUI) Run(game *Game) {
 			if ui.messages.Len() > 0 {
 				ui.drawMessages()
 			}
-			moved, quit = ui.handleKey(ui.screen.Getch(), &game.level, &game.player)
+			moved, quit = ui.handleKey(ui.screen.Getch())
 			Dlog.Println("   RunCurses: ", moved, quit)
 			if quit {
 				ui.messages.PushFront("Quit")
@@ -54,8 +73,8 @@ func (ui *CursesUI) Run(game *Game) {
 				return
 			}
 		}
-		game.level.Iterate(moved)
-		ui.drawMap(&game.level, &game.player)
+		ui.level.Iterate(moved)
+		ui.drawMap()
 	}
 }
 func (ui *CursesUI) Message(s string) { ui.messages.PushFront(s) }
@@ -186,24 +205,43 @@ func castRay(x1, y1, x2, y2 int, cells [][]Cell) bool {
 	return true
 }
 func (ui *CursesUI) refresh() {
+	var ch int32
 	for i := 0; i < len(ui.mapCache); i++ {
 		for j := 0; j < len(ui.mapCache[0]); j++ {
-			ui.screen.Addch(i, j, ui.mapCache[i][j], 0)
+			switch ui.debugMode {
+			case none:
+				ch = ui.mapCache[i][j]
+			case revealMap:
+				ch = ui.level.cells[i][j].(Drawable).Character()
+			case airOverlay:
+				if ui.level.air[i][j] >= 10 {
+					ch = '9'
+				} else {
+					ch = '0' + int32(ui.level.air[i][j])
+				}
+			case energyOverlay:
+				if ui.level.energy[i][j] >= 10 {
+					ch = '9'
+				} else {
+					ch = '0' + int32(ui.level.energy[i][j])
+				}
+			}
+			ui.screen.Addch(i, j, ch, 0)
 		}
 	}
 }
 
-func (ui *CursesUI) drawMap(level *Level, player *Player) {
+func (ui *CursesUI) drawMap() {
 	Dlog.Println("-> CursesUI.drawMap")
-	for i := -player.vision; i < player.vision; i++ {
-		px := player.x + i
-		if px >= 0 && px < level.x {
-			for j := -player.vision; j < player.vision; j++ {
-				py := player.y + j
-				if py >= 0 && py < level.y {
-					if i*i+j*j <= player.vision*player.vision {
-						if castRay(player.x, player.y, px, py, level.cells) {
-							ui.mapCache[px][py] = level.cells[px][py].(Drawable).Character()
+	for i := -ui.player.vision; i < ui.player.vision; i++ {
+		px := ui.player.x + i
+		if px >= 0 && px < ui.level.x {
+			for j := -ui.player.vision; j < ui.player.vision; j++ {
+				py := ui.player.y + j
+				if py >= 0 && py < ui.level.y {
+					if i*i+j*j <= ui.player.vision*ui.player.vision {
+						if castRay(ui.player.x, ui.player.y, px, py, ui.level.cells) {
+							ui.mapCache[px][py] = ui.level.cells[px][py].(Drawable).Character()
 							Dlog.Printf("   CurseUI.drawMap: %v %v drawn %c\n", px, py, ui.mapCache[px][py])
 						}
 					}
@@ -211,7 +249,7 @@ func (ui *CursesUI) drawMap(level *Level, player *Player) {
 			}
 		}
 	}
-	ui.mapCache[player.x][player.y] = player.Character()
+	ui.mapCache[ui.player.x][ui.player.y] = ui.player.Character()
 	ui.refresh()
 	Dlog.Println("<- CursesUI.drawMap")
 }
@@ -246,26 +284,32 @@ func (ui *CursesUI) DirectionPrompt() (x, y int, abort bool) {
 	ui.refresh()
 	return
 }
-func (ui *CursesUI) handleKey(key int, level *Level, player *Player) (moved int, quit bool) {
+func (ui *CursesUI) handleKey(key int) (moved int, quit bool) {
 	Dlog.Printf("-> handleKey key: %c", key)
 	moved, quit = 0, false
 	x, y, abort := keyToDir(key)
 	if !abort {
-		if player.Walk(x, y, level) {
+		if ui.player.Walk(x, y, ui.level) {
 			moved = 1
 		}
 	} else {
 		switch key {
 		case 'm': // Action Menu
-			moved = player.Action(level, ui, NONE)
+			moved = ui.player.Action(ui.level, ui, NONE)
 		case 'c': // Create
-			moved = player.Action(level, ui, CREATE)
+			moved = ui.player.Action(ui.level, ui, CREATE)
 		case 'r': // Repair
-			moved = player.Action(level, ui, REPAIR)
+			moved = ui.player.Action(ui.level, ui, REPAIR)
 		case 's': // Salvage
-			moved = player.Action(level, ui, SALVAGE)
+			moved = ui.player.Action(ui.level, ui, SALVAGE)
 		case 'a': // Activate
-			moved = player.Action(level, ui, ACTIVATE)
+			moved = ui.player.Action(ui.level, ui, ACTIVATE)
+			case 'd': // Debug
+			ui.debugMode++
+			if ui.debugMode == maxDebugMode {
+				ui.debugMode = none
+			}
+			ui.refresh()
 		case 'q':
 			quit = true
 		}

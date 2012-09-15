@@ -10,17 +10,18 @@ var Dlog *log.Logger
 const (
 	NONE int = -1
 
-	SALVAGE  int = 0
-	REPAIR   int = 1
-	CREATE   int = 2
-	ACTIVATE int = 3
-
-	FLOOR        int = 0
-	WALL         int = 1
-	CONDUIT      int = 2
-	WALL_CONDUIT int = 3
-	DOOR         int = 4
-	DOOR_CONDUIT int = 5
+	SALVAGE = iota
+	REPAIR
+	CREATE
+	ACTIVATE
+)
+const (
+	FLOOR = iota
+	WALL
+	CONDUIT
+	WALL_CONDUIT
+	DOOR
+	DOOR_CONDUIT
 )
 
 ////////////////////// LEVEL /////////////////////////
@@ -39,10 +40,14 @@ func (level *Level) Init() {
 	level.cells = make([][]Cell, level.x, level.x)
 	level.air = make([][]float64, level.x, level.x)
 	level.airBuffer = make([][]float64, level.x, level.x)
+	level.energy = make([][]float64, level.x, level.x)
+	level.energyBuffer = make([][]float64, level.x, level.x)
 	for i := 0; i < level.x; i++ {
 		level.cells[i] = make([]Cell, level.y, level.y)
 		level.air[i] = make([]float64, level.y, level.y)
 		level.airBuffer[i] = make([]float64, level.y, level.y)
+		level.energy[i] = make([]float64, level.y, level.y)
+		level.energyBuffer[i] = make([]float64, level.y, level.y)
 		for j := 0; j < level.y; j++ {
 			level.cells[i][j] = new(Vacuum)
 		}
@@ -103,6 +108,10 @@ func (level *Level) Iterate(its int) {
 		level.processFlow(&level.air, &level.airBuffer,
 			func(c Cell) bool { return c.AirFlows() },
 			func(c Cell, a float64) float64 { return c.AirSinkSource(a) })
+		// Energy
+		level.processFlow(&level.energy, &level.energyBuffer,
+			func(c Cell) bool { return c.EnergyFlows() },
+			func(c Cell, a float64) float64 { return c.EnergySinkSource(a) })
 	}
 	Dlog.Println("<- Level.Iterate")
 }
@@ -303,6 +312,6 @@ func main() {
 	Dlog = log.New(file, "DERELICT: ", 0)
 
 	game := NewGame()
-	game.ui = new(CursesUI)
-	game.ui.Run(&game)
+	game.ui = NewCursesUI(&game.level, &game.player)
+	game.ui.Run()
 }
