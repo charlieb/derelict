@@ -9,7 +9,13 @@ import (
 type Cell interface {
 	Walkable() bool
 	SeePast() bool
+
+	// Air
 	AirFlows() bool
+	AirSinkSource(float64) float64 // Each cell can adjust its amount of air
+	// Energy
+	EnergyFlows() bool
+	EnergySinkSource(float64) float64 // Each cell can adjust its amount of energy
 
 	// Returns are turns, replacement Cell
 	Salvage(UI, *Player) (int, Cell)
@@ -17,9 +23,8 @@ type Cell interface {
 	Create(UI, *Player) int
 
 	Activate(UI) int
-
-	Iterate(int, int, *Level) // x, y positions and the level
 }
+
 ////////////// GENERIC ////////////////////
 func genericSalvage(max_steel, max_copper, max_turns int, ui UI, p *Player) (turns int) {
 	var st, cu int = 0, 0
@@ -48,7 +53,7 @@ func genericRepair(damaged *bool, max_steel, max_copper, max_turns int, name str
 	turns = 1 // Inpecting the "name" takes at least 1 turn
 
 	if *damaged {
-		var st, cu int = 0,0
+		var st, cu int = 0, 0
 		if max_steel > 0 {
 			st = rand.Intn(max_steel)
 		}
@@ -57,7 +62,7 @@ func genericRepair(damaged *bool, max_steel, max_copper, max_turns int, name str
 		}
 		p.steel -= st
 		p.copper -= cu
-		turns = 1 + rand.Intn(max_turns -1)
+		turns = 1 + rand.Intn(max_turns-1)
 		if p.steel < 0 && p.copper < 0 {
 			ui.Message(fmt.Sprintf("You run out of steel and copper after %v turns", turns))
 			p.steel = 0
@@ -106,13 +111,17 @@ func genericCreate(max_steel, max_copper, max_turns int, name string, ui UI, p *
 	}
 	return
 }
+
 ///////////// VACUUM ////////////////////
 type Vacuum struct{}
 
-func (c *Vacuum) Walkable() bool   { return true }
-func (c *Vacuum) SeePast() bool    { return true }
-func (c *Vacuum) AirFlows() bool    { return true }
-func (c *Vacuum) Character() int32 { return ' ' }
+func (c *Vacuum) Walkable() bool                     { return true }
+func (c *Vacuum) SeePast() bool                      { return true }
+func (c *Vacuum) AirFlows() bool                     { return true }
+func (c *Vacuum) AirSinkSource(float64) float64      { return 0 }
+func (c *Vacuum) EnergyFlows() bool                  { return false }
+func (c *Vacuum) EnergySinkSource(e float64) float64 { return e }
+func (c *Vacuum) Character() int32                   { return ' ' }
 func (c *Vacuum) Salvage(ui UI, p *Player) (int, Cell) {
 	ui.Message("There is nothing to salvage in a vacuum")
 	return 0, c
@@ -129,15 +138,17 @@ func (c *Vacuum) Activate(ui UI) int {
 	ui.Message("You activate the vacuum, the universe is re-created in a flash")
 	return 1
 }
-func (c *Vacuum) Iterate(x, y int, level *Level) { level.air[x][y] = 0 }
 
 ///////////////// FLOOR /////////////////
 type Floor struct{}
 
-func (c *Floor) Walkable() bool   { return true }
-func (c *Floor) SeePast() bool    { return true }
-func (c *Floor) AirFlows() bool    { return true }
-func (c *Floor) Character() int32 { return '.' }
+func (c *Floor) Walkable() bool                     { return true }
+func (c *Floor) SeePast() bool                      { return true }
+func (c *Floor) AirFlows() bool                     { return true }
+func (c *Floor) AirSinkSource(a float64) float64    { return a }
+func (c *Floor) EnergyFlows() bool                  { return false }
+func (c *Floor) EnergySinkSource(e float64) float64 { return e }
+func (c *Floor) Character() int32                   { return '.' }
 func (c *Floor) Salvage(ui UI, p *Player) (turns int, replacement Cell) {
 	turns = 0
 	replacement = c
@@ -161,17 +172,19 @@ func (c *Floor) Activate(ui UI) int {
 	ui.Message("Nothing happens")
 	return 0
 }
-func (c *Floor) Iterate(x, y int, l *Level) { }
 
 //////////// WALL //////////////////
 type Wall struct {
 	damaged bool
 }
 
-func (w *Wall) Walkable() bool   { return false }
-func (w *Wall) Character() int32 { return '#' }
-func (w *Wall) SeePast() bool    { return false }
-func (w *Wall) AirFlows() bool    { return !w.damaged }
+func (w *Wall) Walkable() bool                     { return false }
+func (w *Wall) Character() int32                   { return '#' }
+func (w *Wall) SeePast() bool                      { return false }
+func (w *Wall) AirFlows() bool                     { return !w.damaged }
+func (c *Wall) AirSinkSource(a float64) float64    { return a }
+func (w *Wall) EnergyFlows() bool                  { return false }
+func (c *Wall) EnergySinkSource(e float64) float64 { return e }
 func (c *Wall) Salvage(ui UI, p *Player) (turns int, replacement Cell) {
 	turns = genericSalvage(10, 0, 10, ui, p)
 	replacement = new(Floor)
@@ -187,7 +200,6 @@ func (c *Wall) Activate(ui UI) int {
 	ui.Message("Nothing happens")
 	return 0
 }
-func (c *Wall) Iterate(x, y int, l *Level) { }
 
 /////////// DOOR ////////////////////
 type Door struct {
@@ -201,12 +213,13 @@ func (d *Door) Character() int32 {
 	}
 	return '+'
 }
-func (d *Door) SeePast() bool { return d.open }
-func (d *Door) AirFlows() bool { return d.open || d.damaged }
-func (c *Door) Salvage(ui UI, p *Player) (turns int, replacement Cell) {
-	turns = genericSalvage(10, 10, 15, ui, p)
-	replacement = new(Floor)
-	return
+func (d *Door) SeePast() bool                      { return d.open }
+func (d *Door) AirFlows() bool                     { return d.open || d.damaged }
+func (c *Door) AirSinkSource(a float64) float64    { return a }
+func (d *Door) EnergyFlows() bool                  { return false }
+func (c *Door) EnergySinkSource(e float64) float64 { return e }
+func (c *Door) Salvage(ui UI, p *Player) (int, Cell) {
+	return genericSalvage(10, 10, 15, ui, p), new(Floor)
 }
 func (c *Door) Repair(ui UI, p *Player) (int, Cell) {
 	return genericRepair(&c.damaged, 5, 5, 10, "door", ui, p), c
@@ -227,23 +240,28 @@ func (c *Door) Activate(ui UI) int {
 	c.open = !c.open
 	return 1
 }
-func (c *Door) Iterate(x, y int, l *Level) { }
 
 //////////////// CONDUIT /////////////////////
 
 type Conduit struct {
-	energy float32
+	energy  float32
 	damaged bool
 }
 
-func (c *Conduit) Walkable() bool   { return true }
-func (c *Conduit) SeePast() bool    { return true }
-func (c *Conduit) AirFlows() bool    { return true }
-func (c *Conduit) Character() int32 { return '-' }
-func (c *Conduit) Salvage(ui UI, p *Player) (turns int, replacement Cell) {
-	turns = genericSalvage(0, 10, 10, ui, p)
-	replacement = new(Floor)
-	return 0, c
+func (c *Conduit) Walkable() bool                     { return true }
+func (c *Conduit) SeePast() bool                      { return true }
+func (c *Conduit) AirFlows() bool                     { return true }
+func (c *Conduit) AirSinkSource(a float64) float64    { return a }
+func (c *Conduit) EnergyFlows() bool                  { return !c.damaged }
+func (c *Conduit) EnergySinkSource(e float64) float64 { return e }
+func (c *Conduit) Character() int32 {
+	if c.damaged {
+		return '~'
+	}
+		return '-'
+}
+func (c *Conduit) Salvage(ui UI, p *Player) (int, Cell) {
+	return genericSalvage(0, 10, 10, ui, p), new(Floor)
 }
 func (c *Conduit) Repair(ui UI, p *Player) (int, Cell) {
 	return genericRepair(&c.damaged, 0, 10, 5, "conduit", ui, p), c
@@ -252,9 +270,6 @@ func (c *Conduit) Create(ui UI, p *Player) int {
 	return genericCreate(0, 15, 10, "conduit", ui, p)
 }
 func (c *Conduit) Activate(ui UI) int {
-	ui.Message("You activate the vacuum, the universe is re-created in a flash")
+	ui.Message("Nothing happens")
 	return 1
 }
-func (c *Conduit) Iterate(x, y int, level *Level) { level.air[x][y] = 0 }
-
-

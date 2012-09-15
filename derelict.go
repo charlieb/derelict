@@ -10,9 +10,9 @@ var Dlog *log.Logger
 const (
 	NONE int = -1
 
-	SALVAGE int = 0
-	REPAIR  int = 1
-	CREATE  int = 2
+	SALVAGE  int = 0
+	REPAIR   int = 1
+	CREATE   int = 2
 	ACTIVATE int = 3
 
 	FLOOR        int = 0
@@ -30,6 +30,9 @@ type Level struct {
 	cells     [][]Cell
 	air       [][]float64
 	airBuffer [][]float64
+
+	energy       [][]float64
+	energyBuffer [][]float64
 }
 
 func (level *Level) Init() {
@@ -59,19 +62,14 @@ func (level *Level) outerWall() {
 		level.cells[level.x-1][j] = new(Wall)
 	}
 }
-func (level *Level) Iterate(its int) {
-	Dlog.Println("-> Level.Iterate")
-	for it := 0; it < its; it++ {
-		for i := 0; i < level.x; i++ {
-			for j := 0; j < level.y; j++ {
-				level.cells[i][j].Iterate(i, j, level)
-				level.airBuffer[i][j] = 0
-			}
-		}
-
-		var total, nairs float64
-		for i := 0; i < level.x; i++ {
-			for j := 0; j < level.y; j++ {
+func (level *Level) processFlow(flow, flowBuffer *[][]float64,
+	flowsp func(Cell) bool,
+	sinksource func(Cell, float64) float64) {
+	const min_flow, max_flow float64 = 0, 9
+	var total, nairs float64
+	for i := 0; i < level.x; i++ {
+		for j := 0; j < level.y; j++ {
+			if flowsp(level.cells[i][j]) {
 				total = 0
 				nairs = 0
 				Dlog.Printf("   Level.Iterate cell: (%v, %v)\n", i, j)
@@ -79,8 +77,8 @@ func (level *Level) Iterate(its int) {
 					for jj := -1; jj <= 1; jj++ {
 						if i+ii >= 0 && i+ii < level.x && j+jj >= 0 && j+jj < level.y {
 							Dlog.Printf("   Level.Iterate (%v, %v)\n", i+ii, j+jj)
-							if level.cells[i+ii][j+jj] == nil || level.cells[i+ii][j+jj].AirFlows() {
-								total += level.air[i+ii][j+jj]
+							if flowsp(level.cells[i+ii][j+jj]) {
+								total += (*flow)[i+ii][j+jj]
 								nairs++
 							}
 						}
@@ -90,12 +88,21 @@ func (level *Level) Iterate(its int) {
 					continue
 				}
 				Dlog.Printf("   Level.Iterate (%v, %v) airs: %v, total: %v\n", i, j, nairs, total)
-				level.airBuffer[i][j] = total / nairs
+				(*flowBuffer)[i][j] = sinksource(level.cells[i][j], total/nairs)
 			}
 		}
-		tmp := level.air
-		level.air = level.airBuffer
-		level.airBuffer = tmp
+	}
+	tmp := *flow
+	*flow = *flowBuffer
+	*flowBuffer = tmp
+}
+func (level *Level) Iterate(its int) {
+	Dlog.Println("-> Level.Iterate")
+	for it := 0; it < its; it++ {
+		// Air
+		level.processFlow(&level.air, &level.airBuffer,
+			func(c Cell) bool { return c.AirFlows() },
+			func(c Cell, a float64) float64 { return c.AirSinkSource(a) })
 	}
 	Dlog.Println("<- Level.Iterate")
 }
@@ -156,7 +163,7 @@ func (p *Player) Character() int32 { return '@' }
 func (p *Player) buildWall(x, y int) {
 
 }
-func (p *Player) Action(level *Level, ui UI, action_id int)  (turns int) {
+func (p *Player) Action(level *Level, ui UI, action_id int) (turns int) {
 	Dlog.Println("-> Player.Action")
 	abort := false
 	if action_id == NONE {
@@ -220,19 +227,41 @@ func buildTestLevel(level *Level) {
 		}
 	}
 	// Outer walls
-	for i := 0; i < 31; i++ { level.cells[i][0] = new(Wall) }
-	for i := 0; i < 31; i++ { level.cells[i][20] = new(Wall) }
-	for i := 0; i < 20; i++ { level.cells[0][i] = new(Wall) }
-	for i := 0; i < 20; i++ { level.cells[30][i] = new(Wall) }
+	for i := 0; i < 31; i++ {
+		level.cells[i][0] = new(Wall)
+	}
+	for i := 0; i < 31; i++ {
+		level.cells[i][20] = new(Wall)
+	}
+	for i := 0; i < 20; i++ {
+		level.cells[0][i] = new(Wall)
+	}
+	for i := 0; i < 20; i++ {
+		level.cells[30][i] = new(Wall)
+	}
 
 	// Inner walls
-	for i := 0; i < 15;  i++ { level.cells[8][i] = new(Wall) }
-	for i := 0; i < 18;  i++ { level.cells[i][14] = new(Wall) }
-	for i := 15; i < 20; i++ { level.cells[12][i] = new(Wall) }
-	for i := 8; i < 18;  i++ { level.cells[i][8] = new(Wall) }
-	for i := 0; i < 20;  i++ { level.cells[18][i] = new(Wall) }
-	for i := 0; i < 20;  i++ { level.cells[21][i] = new(Wall) }
-	for i := 21; i < 30; i++ { level.cells[i][10] = new(Wall) }
+	for i := 0; i < 15; i++ {
+		level.cells[8][i] = new(Wall)
+	}
+	for i := 0; i < 18; i++ {
+		level.cells[i][14] = new(Wall)
+	}
+	for i := 15; i < 20; i++ {
+		level.cells[12][i] = new(Wall)
+	}
+	for i := 8; i < 18; i++ {
+		level.cells[i][8] = new(Wall)
+	}
+	for i := 0; i < 20; i++ {
+		level.cells[18][i] = new(Wall)
+	}
+	for i := 0; i < 20; i++ {
+		level.cells[21][i] = new(Wall)
+	}
+	for i := 21; i < 30; i++ {
+		level.cells[i][10] = new(Wall)
+	}
 
 	// Doors
 	level.cells[0][2] = new(Door)
