@@ -1,11 +1,11 @@
 deReLict
-========
+--------
 
 Derelict is a space roguelike based around salvaging and/or repairing damaged
 space hulks in the very hostile environment of space.
 
 Controls
---------
+~~~~~~~~
 
 Movement: vi keys
  y  k  u
@@ -18,11 +18,20 @@ h - . - l
 . - wait a turn
 
 m - main menu
+
 a - activate
 s - salvage
 r - repair
 c - create
+
+p - toggle pressure sensor
+e - toggle energy sensor
+
 d - debug overlays (map, air, energy)
 
 q - quit
+
+Todo
+~~~~
+
 

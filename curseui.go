@@ -2,6 +2,7 @@ package main
 
 import (
 	"container/list"
+	"fmt"
 	"github.com/errnoh/gocurse/curses"
 	"math"
 	"strings"
@@ -14,6 +15,7 @@ type UI interface {
 	DirectionPrompt() (int, int, bool) // x, y, abort
 	YesNoPrompt(string) (bool, bool)   // Yes/No, aborted
 }
+
 const (
 	none = iota
 	revealMap
@@ -27,7 +29,7 @@ type CursesUI struct {
 	mapCache [][]int32
 	messages list.List
 
-	level *Level
+	level  *Level
 	player *Player
 
 	debugMode int
@@ -229,6 +231,7 @@ func (ui *CursesUI) refresh() {
 			ui.screen.Addch(i, j, ch, 0)
 		}
 	}
+	ui.drawModeLine()
 }
 
 func (ui *CursesUI) drawMap() {
@@ -252,6 +255,23 @@ func (ui *CursesUI) drawMap() {
 	ui.mapCache[ui.player.x][ui.player.y] = ui.player.Character()
 	ui.refresh()
 	Dlog.Println("<- CursesUI.drawMap")
+}
+func (ui *CursesUI) drawModeLine() {
+	var sensors string = "  "
+	if ui.player.pressure_sensor_on && ui.player.energy_sensor_on {
+		sensors = "ep"
+	} else if ui.player.pressure_sensor_on {
+		sensors = "p "
+	} else if ui.player.energy_sensor_on {
+		sensors = "e "
+	}
+	ui.screen.Addstr(0, 24, fmt.Sprintf("-- deReLict --  St:%v Cu:%v Air:%v/%v, Sensors:%v",
+		ui.player.steel, ui.player.copper, ui.player.air_left,
+		ui.player.air_capacity, sensors), 0)
+	/*
+		pressure_sensor_range int
+		pressure_sensor_on    bool
+	*/
 }
 func keyToDir(key int) (int, int, bool) { // dx,dy,abort
 	switch key {
@@ -304,7 +324,11 @@ func (ui *CursesUI) handleKey(key int) (moved int, quit bool) {
 			moved = ui.player.Action(ui.level, ui, SALVAGE)
 		case 'a': // Activate
 			moved = ui.player.Action(ui.level, ui, ACTIVATE)
-			case 'd': // Debug
+		case 'p': // Toggle Pressure Sensor
+			ui.player.pressure_sensor_on = !ui.player.pressure_sensor_on
+		case 'e': // Toggle Energy Sensor
+			ui.player.energy_sensor_on = !ui.player.energy_sensor_on
+		case 'd': // Debug
 			ui.debugMode++
 			if ui.debugMode == maxDebugMode {
 				ui.debugMode = none

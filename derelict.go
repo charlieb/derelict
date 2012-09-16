@@ -131,6 +131,8 @@ type Player struct {
 
 	energy_left, energy_capcacity float64
 
+	energy_sensor_range int
+	energy_sensor_on    bool
 	pressure_sensor_range int
 	pressure_sensor_on    bool
 
@@ -331,7 +333,6 @@ func NewGame() Game {
 	var game Game
 	game.level.x, game.level.y = 69, 23
 	game.level.Init()
-	game.level.outerWall()
 
 	buildTestLevel(&game.level)
 
