@@ -273,6 +273,38 @@ func (c *Conduit) Activate(ui UI) int {
 	return 1
 }
 
+//////////////// WALL CONDUIT /////////////////////
+
+type WallConduit struct {
+	damaged bool
+}
+
+func (c *WallConduit) Walkable() bool                     { return false }
+func (c *WallConduit) SeePast() bool                      { return false }
+func (c *WallConduit) AirFlows() bool                     { return c.damaged }
+func (c *WallConduit) AirSinkSource(a float64) float64    { return a }
+func (c *WallConduit) EnergyFlows() bool                  { return !c.damaged }
+func (c *WallConduit) EnergySinkSource(e float64) float64 { return e }
+func (c *WallConduit) Character() int32 {
+	if c.damaged {
+		return '%'
+	}
+		return '*'
+}
+func (c *WallConduit) Salvage(ui UI, p *Player) (int, Cell) {
+	return genericSalvage(10, 10, 15, ui, p), new(Floor)
+}
+func (c *WallConduit) Repair(ui UI, p *Player) (int, Cell) {
+	return genericRepair(&c.damaged, 10, 10, 15, "conduit", ui, p), c
+}
+func (c *WallConduit) Create(ui UI, p *Player) int {
+	return genericCreate(15, 15, 15, "conduit", ui, p)
+}
+func (c *WallConduit) Activate(ui UI) int {
+	ui.Message("Nothing happens")
+	return 1
+}
+
 ///////////// POWER PLANT /////////////////
 
 type PowerPlant struct {
@@ -316,6 +348,7 @@ func (c *PowerPlant) Activate(ui UI) int {
 
 type AirPlant struct {
 	damaged bool
+	energy float64
 }
 
 func (c *AirPlant) Walkable() bool                     { return false }
@@ -323,13 +356,16 @@ func (c *AirPlant) SeePast() bool                      { return false }
 func (c *AirPlant) AirFlows() bool                     { return !c.damaged }
 func (c *AirPlant) AirSinkSource(a float64) float64    {
 	Dlog.Println("<> AirPlant")
-	if !c.damaged {
+	if !c.damaged && c.energy > 5 {
 		return 9
 	}
 	return a
 }
-func (c *AirPlant) EnergyFlows() bool                  { return false }
-func (c *AirPlant) EnergySinkSource(e float64) float64 { return e }
+func (c *AirPlant) EnergyFlows() bool                  { return true }
+func (c *AirPlant) EnergySinkSource(e float64) float64 {
+	c.energy = e
+	return e
+}
 func (c *AirPlant) Character() int32 {
 	if c.damaged {
 		return 'a'

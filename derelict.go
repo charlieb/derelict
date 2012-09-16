@@ -286,10 +286,10 @@ func buildTestLevel(level *Level) {
 	level.cells[21][14] = new(Door)
 
 	// Power Plant
-	level.cells[24][6] = new(PowerPlant)
-	level.cells[25][6] = new(PowerPlant)
-	level.cells[24][7] = new(PowerPlant)
-	level.cells[25][7] = new(PowerPlant)
+	level.cells[26][3] = new(PowerPlant)
+	level.cells[27][3] = new(PowerPlant)
+	level.cells[26][4] = new(PowerPlant)
+	level.cells[27][4] = new(PowerPlant)
 /*
 	level.cells[24][6].(*PowerPlant).damaged = false
 	level.cells[25][6].(*PowerPlant).damaged = false
@@ -298,10 +298,25 @@ func buildTestLevel(level *Level) {
 	*/
 
 	// Air Plant
-	level.cells[24][17] = new(AirPlant)
-	level.cells[25][17] = new(AirPlant)
-	level.cells[24][16] = new(AirPlant)
-	level.cells[25][16] = new(AirPlant)
+	level.cells[26][17] = new(AirPlant)
+	level.cells[27][17] = new(AirPlant)
+	level.cells[26][16] = new(AirPlant)
+	level.cells[27][16] = new(AirPlant)
+
+	// Conduits
+	level.cells[28][4] = new(Conduit)
+	level.cells[28][5] = new(Conduit)
+	level.cells[28][6] = new(Conduit)
+	level.cells[28][7] = new(Conduit)
+	level.cells[28][8] = new(Conduit)
+	level.cells[28][9] = new(Conduit)
+	level.cells[28][10] = new(WallConduit)
+	level.cells[28][11] = new(Conduit)
+	level.cells[28][12] = new(Conduit)
+	level.cells[28][13] = new(Conduit)
+	level.cells[28][14] = new(Conduit)
+	level.cells[28][15] = new(Conduit)
+	level.cells[28][16] = new(Conduit)
 
 }
 
