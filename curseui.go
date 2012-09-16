@@ -258,20 +258,15 @@ func (ui *CursesUI) drawMap() {
 }
 func (ui *CursesUI) drawModeLine() {
 	var sensors string = "  "
-	if ui.player.pressure_sensor_on && ui.player.energy_sensor_on {
-		sensors = "ep"
-	} else if ui.player.pressure_sensor_on {
-		sensors = "p "
-	} else if ui.player.energy_sensor_on {
-		sensors = "e "
+	switch ui.player.sensor {
+		case pressureSensor:
+		sensors = "p"
+	case energySensor:
+		sensors = "e"
 	}
-	ui.screen.Addstr(0, 24, fmt.Sprintf("-- deReLict --  St:%v Cu:%v Air:%v/%v, Sensors:%v",
+	ui.screen.Addstr(0, 24, fmt.Sprintf("-- deReLict --  St:%v Cu:%v Air:%v/%v, Sensor:%v",
 		ui.player.steel, ui.player.copper, ui.player.air_left,
 		ui.player.air_capacity, sensors), 0)
-	/*
-		pressure_sensor_range int
-		pressure_sensor_on    bool
-	*/
 }
 func keyToDir(key int) (int, int, bool) { // dx,dy,abort
 	switch key {
@@ -324,10 +319,18 @@ func (ui *CursesUI) handleKey(key int) (moved int, quit bool) {
 			moved = ui.player.Action(ui.level, ui, SALVAGE)
 		case 'a': // Activate
 			moved = ui.player.Action(ui.level, ui, ACTIVATE)
-		case 'p': // Toggle Pressure Sensor
-			ui.player.pressure_sensor_on = !ui.player.pressure_sensor_on
-		case 'e': // Toggle Energy Sensor
-			ui.player.energy_sensor_on = !ui.player.energy_sensor_on
+			case 'p': // Toggle Pressure Sensor
+			if ui.player.sensor == pressureSensor {
+				ui.player.sensor = noSensor
+			} else {
+				ui.player.sensor = pressureSensor
+			}
+			case 'e': // Toggle Energy Sensor
+			if ui.player.sensor == energySensor {
+				ui.player.sensor = noSensor
+			} else {
+				ui.player.sensor = energySensor
+			}
 		case 'd': // Debug
 			ui.debugMode++
 			if ui.debugMode == maxDebugMode {

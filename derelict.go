@@ -124,17 +124,21 @@ type Drawable interface {
 }
 
 ////////////////////// PLAYER /////////////////////////
-
+const (
+	noSensor = iota
+	pressureSensor
+	energySensor
+	maxSensor
+)
 type Player struct {
 	x, y   int
 	vision int
 
 	energy_left, energy_capcacity float64
 
+	sensor int
 	energy_sensor_range int
-	energy_sensor_on    bool
 	pressure_sensor_range int
-	pressure_sensor_on    bool
 
 	air_left, air_capacity float64
 	helmet_on              bool
@@ -148,8 +152,9 @@ func (p *Player) Init() {
 
 	p.energy_left, p.energy_capcacity = 1.0, 1.0
 
+	p.sensor = noSensor
 	p.pressure_sensor_range = 1
-	p.pressure_sensor_on = false
+	p.energy_sensor_range = 1
 
 	p.air_left, p.air_capacity = 1.0, 1.0
 	p.helmet_on = true
