@@ -181,7 +181,7 @@ type Wall struct {
 func (w *Wall) Walkable() bool                     { return false }
 func (w *Wall) Character() int32                   { return '#' }
 func (w *Wall) SeePast() bool                      { return false }
-func (w *Wall) AirFlows() bool                     { return !w.damaged }
+func (w *Wall) AirFlows() bool                     { return w.damaged }
 func (c *Wall) AirSinkSource(a float64) float64    { return a }
 func (w *Wall) EnergyFlows() bool                  { return false }
 func (c *Wall) EnergySinkSource(e float64) float64 { return e }
@@ -244,7 +244,6 @@ func (c *Door) Activate(ui UI) int {
 //////////////// CONDUIT /////////////////////
 
 type Conduit struct {
-	energy  float32
 	damaged bool
 }
 
@@ -273,3 +272,83 @@ func (c *Conduit) Activate(ui UI) int {
 	ui.Message("Nothing happens")
 	return 1
 }
+
+///////////// POWER PLANT /////////////////
+
+type PowerPlant struct {
+	damaged bool
+}
+
+func (c *PowerPlant) Walkable() bool                     { return false }
+func (c *PowerPlant) SeePast() bool                      { return false }
+func (c *PowerPlant) AirFlows() bool                     { return false }
+func (c *PowerPlant) AirSinkSource(a float64) float64    { return a }
+func (c *PowerPlant) EnergyFlows() bool                  { return !c.damaged }
+func (c *PowerPlant) EnergySinkSource(e float64) float64 {
+	if !c.damaged {
+		return 9
+	}
+	return e
+}
+func (c *PowerPlant) Character() int32 {
+	if c.damaged {
+		return 'p'
+	}
+		return 'P'
+}
+func (c *PowerPlant) Salvage(ui UI, p *Player) (int, Cell) {
+	return genericSalvage(10, 10, 20, ui, p), new(Floor)
+}
+func (c *PowerPlant) Repair(ui UI, p *Player) (int, Cell) {
+	return genericRepair(&c.damaged, 10, 10, 15, "power plant", ui, p), c
+}
+func (c *PowerPlant) Create(ui UI, p *Player) int {
+	ui.Message("You cannot create a power plant from scratch")
+	return 0
+}
+func (c *PowerPlant) Activate(ui UI) int {
+	ui.Message("Nothing happens")
+	return 1
+}
+
+
+///////////// AIR PLANT /////////////////
+
+type AirPlant struct {
+	damaged bool
+}
+
+func (c *AirPlant) Walkable() bool                     { return false }
+func (c *AirPlant) SeePast() bool                      { return false }
+func (c *AirPlant) AirFlows() bool                     { return !c.damaged }
+func (c *AirPlant) AirSinkSource(a float64) float64    {
+	Dlog.Println("<> AirPlant")
+	if !c.damaged {
+		return 9
+	}
+	return a
+}
+func (c *AirPlant) EnergyFlows() bool                  { return false }
+func (c *AirPlant) EnergySinkSource(e float64) float64 { return e }
+func (c *AirPlant) Character() int32 {
+	if c.damaged {
+		return 'a'
+	}
+		return 'A'
+}
+func (c *AirPlant) Salvage(ui UI, p *Player) (int, Cell) {
+	return genericSalvage(10, 10, 20, ui, p), new(Floor)
+}
+func (c *AirPlant) Repair(ui UI, p *Player) (int, Cell) {
+	return genericRepair(&c.damaged, 10, 10, 15, "air plant", ui, p), c
+}
+func (c *AirPlant) Create(ui UI, p *Player) int {
+	ui.Message("You cannot create a air plant from scratch")
+	return 0
+}
+func (c *AirPlant) Activate(ui UI) int {
+	ui.Message("Nothing happens")
+	return 1
+}
+
+

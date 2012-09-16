@@ -70,6 +70,7 @@ func (level *Level) outerWall() {
 func (level *Level) processFlow(flow, flowBuffer *[][]float64,
 	flowsp func(Cell) bool,
 	sinksource func(Cell, float64) float64) {
+		Dlog.Println("-> processFlow")
 	const min_flow, max_flow float64 = 0, 9
 	var total, nairs float64
 	for i := 0; i < level.x; i++ {
@@ -77,29 +78,31 @@ func (level *Level) processFlow(flow, flowBuffer *[][]float64,
 			if flowsp(level.cells[i][j]) {
 				total = 0
 				nairs = 0
-				Dlog.Printf("   Level.Iterate cell: (%v, %v)\n", i, j)
+				Dlog.Printf("   processFlow cell: (%v, %v)\n", i, j)
 				for ii := -1; ii <= 1; ii++ {
 					for jj := -1; jj <= 1; jj++ {
 						if i+ii >= 0 && i+ii < level.x && j+jj >= 0 && j+jj < level.y {
-							Dlog.Printf("   Level.Iterate (%v, %v)\n", i+ii, j+jj)
 							if flowsp(level.cells[i+ii][j+jj]) {
 								total += (*flow)[i+ii][j+jj]
 								nairs++
+								Dlog.Printf("   processFlow (%v, %v), flows %v / %v\n", i+ii, j+jj, total, nairs)
 							}
 						}
 					}
 				}
 				if nairs == 0 || total == 0 {
-					continue
+					(*flowBuffer)[i][j] = sinksource(level.cells[i][j], 0)
+				} else {
+					(*flowBuffer)[i][j] = sinksource(level.cells[i][j], total/nairs)
 				}
-				Dlog.Printf("   Level.Iterate (%v, %v) airs: %v, total: %v\n", i, j, nairs, total)
-				(*flowBuffer)[i][j] = sinksource(level.cells[i][j], total/nairs)
+				Dlog.Printf("   processFlow (%v, %v) airs: %v, total: %v\n", i, j, nairs, total)
 			}
 		}
 	}
 	tmp := *flow
 	*flow = *flowBuffer
 	*flowBuffer = tmp
+	Dlog.Println("<- processFlow")
 }
 func (level *Level) Iterate(its int) {
 	Dlog.Println("-> Level.Iterate")
@@ -281,6 +284,25 @@ func buildTestLevel(level *Level) {
 	level.cells[18][11] = new(Door)
 	level.cells[21][6] = new(Door)
 	level.cells[21][14] = new(Door)
+
+	// Power Plant
+	level.cells[24][6] = new(PowerPlant)
+	level.cells[25][6] = new(PowerPlant)
+	level.cells[24][7] = new(PowerPlant)
+	level.cells[25][7] = new(PowerPlant)
+/*
+	level.cells[24][6].(*PowerPlant).damaged = false
+	level.cells[25][6].(*PowerPlant).damaged = false
+	level.cells[24][7].(*PowerPlant).damaged = false
+	level.cells[25][7].(*PowerPlant).damaged = false
+	*/
+
+	// Air Plant
+	level.cells[24][17] = new(AirPlant)
+	level.cells[25][17] = new(AirPlant)
+	level.cells[24][16] = new(AirPlant)
+	level.cells[25][16] = new(AirPlant)
+
 }
 
 /////////////////// GAME MAIN ///////////////////
@@ -295,8 +317,6 @@ func NewGame() Game {
 	game.level.x, game.level.y = 69, 23
 	game.level.Init()
 	game.level.outerWall()
-	game.level.air[10][10] = 9
-	game.level.air[10][11] = 9
 
 	buildTestLevel(&game.level)
 
