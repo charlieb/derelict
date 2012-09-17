@@ -104,18 +104,16 @@ func (level *Level) processFlow(flow, flowBuffer *[][]float64,
 	*flowBuffer = tmp
 	Dlog.Println("<- processFlow")
 }
-func (level *Level) Iterate(its int) {
+func (level *Level) Iterate() {
 	Dlog.Println("-> Level.Iterate")
-	for it := 0; it < its; it++ {
-		// Air
-		level.processFlow(&level.air, &level.airBuffer,
-			func(c Cell) bool { return c.AirFlows() },
-			func(c Cell, a float64) float64 { return c.AirSinkSource(a) })
-		// Energy
-		level.processFlow(&level.energy, &level.energyBuffer,
-			func(c Cell) bool { return c.EnergyFlows() },
-			func(c Cell, a float64) float64 { return c.EnergySinkSource(a) })
-	}
+	// Air
+	level.processFlow(&level.air, &level.airBuffer,
+	func(c Cell) bool { return c.AirFlows() },
+	func(c Cell, a float64) float64 { return c.AirSinkSource(a) })
+	// Energy
+	level.processFlow(&level.energy, &level.energyBuffer,
+	func(c Cell) bool { return c.EnergyFlows() },
+	func(c Cell, a float64) float64 { return c.EnergySinkSource(a) })
 	Dlog.Println("<- Level.Iterate")
 }
 
@@ -156,7 +154,7 @@ func (p *Player) Init() {
 	p.pressure_sensor_range = 1
 	p.energy_sensor_range = 1
 
-	p.air_left, p.air_capacity = 1.0, 1.0
+	p.air_left, p.air_capacity = 10.0, 10.0
 	p.helmet_on = true
 }
 func (p *Player) Move(to_x, to_y int) {
@@ -178,10 +176,10 @@ func (p *Player) Walk(dir_x, dir_y int, level *Level) bool {
 	return false
 }
 func (p *Player) Character() int32 { return '@' }
-
-func (p *Player) buildWall(x, y int) {
-
+func (p *Player) Iterate(level *Level) {
+	p.air_left -= 0.1 / (1 + level.air[p.x][p.y])
 }
+
 func (p *Player) Action(level *Level, ui UI, action_id int) (turns int) {
 	Dlog.Println("-> Player.Action")
 	abort := false

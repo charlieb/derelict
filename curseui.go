@@ -75,7 +75,10 @@ func (ui *CursesUI) Run() {
 				return
 			}
 		}
-		ui.level.Iterate(moved)
+		for it := 0; it < moved; it++ {
+			ui.level.Iterate()
+			ui.player.Iterate(ui.level)
+		}
 		ui.drawMap()
 	}
 }
@@ -231,6 +234,26 @@ func (ui *CursesUI) refresh() {
 			ui.screen.Addch(i, j, ch, 0)
 		}
 	}
+
+	// Draw player and sensor information if any
+	switch ui.player.sensor {
+	case noSensor:
+		ui.screen.Addch(ui.player.x, ui.player.y, ui.player.Character(), 0)
+	case pressureSensor:
+		if ui.level.air[ui.player.x][ui.player.y] >= 10 {
+			ui.screen.Addch(ui.player.x, ui.player.y, '9', 0)
+		} else {
+			ui.screen.Addch(ui.player.x, ui.player.y,
+				'0'+int32(ui.level.air[ui.player.x][ui.player.y]), 0)
+		}
+	case energySensor:
+		if ui.level.energy[ui.player.x][ui.player.y] >= 10 {
+			ui.screen.Addch(ui.player.x, ui.player.y, '9', 0)
+		} else {
+			ui.screen.Addch(ui.player.x, ui.player.y,
+				'0'+int32(ui.level.energy[ui.player.x][ui.player.y]), 0)
+		}
+	}
 	ui.drawModeLine()
 }
 
@@ -252,19 +275,18 @@ func (ui *CursesUI) drawMap() {
 			}
 		}
 	}
-	ui.mapCache[ui.player.x][ui.player.y] = ui.player.Character()
 	ui.refresh()
 	Dlog.Println("<- CursesUI.drawMap")
 }
 func (ui *CursesUI) drawModeLine() {
 	var sensors string = "  "
 	switch ui.player.sensor {
-		case pressureSensor:
+	case pressureSensor:
 		sensors = "p"
 	case energySensor:
 		sensors = "e"
 	}
-	ui.screen.Addstr(0, 24, fmt.Sprintf("-- deReLict --  St:%v Cu:%v Air:%v/%v, Sensor:%v",
+	ui.screen.Addstr(0, 24, fmt.Sprintf("-- deReLict --  St:%v Cu:%v Air:%4.2f/%4.2f, Sensor:%v",
 		ui.player.steel, ui.player.copper, ui.player.air_left,
 		ui.player.air_capacity, sensors), 0)
 }
@@ -319,18 +341,20 @@ func (ui *CursesUI) handleKey(key int) (moved int, quit bool) {
 			moved = ui.player.Action(ui.level, ui, SALVAGE)
 		case 'a': // Activate
 			moved = ui.player.Action(ui.level, ui, ACTIVATE)
-			case 'p': // Toggle Pressure Sensor
+		case 'p': // Toggle Pressure Sensor
 			if ui.player.sensor == pressureSensor {
 				ui.player.sensor = noSensor
 			} else {
 				ui.player.sensor = pressureSensor
 			}
-			case 'e': // Toggle Energy Sensor
+			ui.refresh()
+		case 'e': // Toggle Energy Sensor
 			if ui.player.sensor == energySensor {
 				ui.player.sensor = noSensor
 			} else {
 				ui.player.sensor = energySensor
 			}
+			ui.refresh()
 		case 'd': // Debug
 			ui.debugMode++
 			if ui.debugMode == maxDebugMode {
