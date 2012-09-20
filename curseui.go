@@ -209,6 +209,22 @@ func castRay(x1, y1, x2, y2 int, cells [][]Cell) bool {
 	Dlog.Println("<- castRay", true)
 	return true
 }
+func drawSensor(rng, x, y, maxx, maxy int, sensed [][]float64, screen *curses.Window) {
+	for i := -rng; i < rng; i++ {
+		for j := -rng; j < rng; j++ {
+			if i*i+j*j < rng*rng {
+				if x+i >= 0 && x+i < maxx && y+j >= 0 && y+j < maxy {
+					if sensed[x+i][y+j] >= 10 {
+						screen.Addch(x+i, y+j, '9', 0)
+					} else {
+						screen.Addch(x+i, y+j, '0'+int32(sensed[x+i][y+j]), 0)
+					}
+				}
+			}
+		}
+	}
+}
+
 func (ui *CursesUI) refresh() {
 	var ch int32
 	for i := 0; i < len(ui.mapCache); i++ {
@@ -240,19 +256,11 @@ func (ui *CursesUI) refresh() {
 	case noSensor:
 		ui.screen.Addch(ui.player.x, ui.player.y, ui.player.Character(), 0)
 	case pressureSensor:
-		if ui.level.air[ui.player.x][ui.player.y] >= 10 {
-			ui.screen.Addch(ui.player.x, ui.player.y, '9', 0)
-		} else {
-			ui.screen.Addch(ui.player.x, ui.player.y,
-				'0'+int32(ui.level.air[ui.player.x][ui.player.y]), 0)
-		}
+		drawSensor(ui.player.pressure_sensor_range, ui.player.x, ui.player.y,
+			ui.level.x, ui.level.y, ui.level.air, ui.screen)
 	case energySensor:
-		if ui.level.energy[ui.player.x][ui.player.y] >= 10 {
-			ui.screen.Addch(ui.player.x, ui.player.y, '9', 0)
-		} else {
-			ui.screen.Addch(ui.player.x, ui.player.y,
-				'0'+int32(ui.level.energy[ui.player.x][ui.player.y]), 0)
-		}
+		drawSensor(ui.player.energy_sensor_range, ui.player.x, ui.player.y,
+			ui.level.x, ui.level.y, ui.level.air, ui.screen)
 	}
 	ui.drawModeLine()
 }

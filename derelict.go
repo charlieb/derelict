@@ -151,7 +151,7 @@ func (p *Player) Init() {
 	p.energy_left, p.energy_capcacity = 1.0, 1.0
 
 	p.sensor = noSensor
-	p.pressure_sensor_range = 1
+	p.pressure_sensor_range = 2
 	p.energy_sensor_range = 1
 
 	p.air_left, p.air_capacity = 10.0, 10.0
