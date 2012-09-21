@@ -31,5 +31,14 @@ d - debug overlays (map, air, energy)
 
 q - quit
 
+TODO
+~~~~
 
-
+- Make energy flow faster
+- Death
+- Fix player air usage algorithm to allow air to recharge if the ambient pressure is high enough
+  - maybe a tri-state situation: depletion, steady state, recharge
+- Entrance / Exit, if we're going to kill the player we should at least give them an escape route
+- Level generation
+- Player progress, maybe give the option to improve sensor range, air tank size etc. also how should the player "pay" for this?
+- Additional cell types - maybe engines, computer, computer conduits etc.
