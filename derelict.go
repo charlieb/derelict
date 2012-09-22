@@ -68,9 +68,10 @@ func (level *Level) outerWall() {
 	}
 }
 func (level *Level) processFlow(flow, flowBuffer *[][]float64,
+	influence_range int, // Effectively controls speed of flow
 	flowsp func(Cell) bool,
 	sinksource func(Cell, float64) float64) {
-		Dlog.Println("-> processFlow")
+	Dlog.Println("-> processFlow")
 	const min_flow, max_flow float64 = 0, 9
 	var total, nairs float64
 	for i := 0; i < level.x; i++ {
@@ -79,8 +80,8 @@ func (level *Level) processFlow(flow, flowBuffer *[][]float64,
 				total = 0
 				nairs = 0
 				Dlog.Printf("   processFlow cell: (%v, %v)\n", i, j)
-				for ii := -1; ii <= 1; ii++ {
-					for jj := -1; jj <= 1; jj++ {
+				for ii := -influence_range; ii <= influence_range; ii++ {
+					for jj := -influence_range; jj <= influence_range; jj++ {
 						if i+ii >= 0 && i+ii < level.x && j+jj >= 0 && j+jj < level.y {
 							if flowsp(level.cells[i+ii][j+jj]) {
 								total += (*flow)[i+ii][j+jj]
@@ -107,13 +108,13 @@ func (level *Level) processFlow(flow, flowBuffer *[][]float64,
 func (level *Level) Iterate() {
 	Dlog.Println("-> Level.Iterate")
 	// Air
-	level.processFlow(&level.air, &level.airBuffer,
-	func(c Cell) bool { return c.AirFlows() },
-	func(c Cell, a float64) float64 { return c.AirSinkSource(a) })
+	level.processFlow(&level.air, &level.airBuffer, 1,
+		func(c Cell) bool { return c.AirFlows() },
+		func(c Cell, a float64) float64 { return c.AirSinkSource(a) })
 	// Energy
-	level.processFlow(&level.energy, &level.energyBuffer,
-	func(c Cell) bool { return c.EnergyFlows() },
-	func(c Cell, a float64) float64 { return c.EnergySinkSource(a) })
+	level.processFlow(&level.energy, &level.energyBuffer, 5,
+		func(c Cell) bool { return c.EnergyFlows() },
+		func(c Cell, a float64) float64 { return c.EnergySinkSource(a) })
 	Dlog.Println("<- Level.Iterate")
 }
 
@@ -128,14 +129,15 @@ const (
 	energySensor
 	maxSensor
 )
+
 type Player struct {
 	x, y   int
 	vision int
 
 	energy_left, energy_capcacity float64
 
-	sensor int
-	energy_sensor_range int
+	sensor                int
+	energy_sensor_range   int
 	pressure_sensor_range int
 
 	air_left, air_capacity float64
@@ -295,11 +297,11 @@ func buildTestLevel(level *Level) {
 	level.cells[27][3] = new(PowerPlant)
 	level.cells[26][4] = new(PowerPlant)
 	level.cells[27][4] = new(PowerPlant)
-/*
-	level.cells[24][6].(*PowerPlant).damaged = false
-	level.cells[25][6].(*PowerPlant).damaged = false
-	level.cells[24][7].(*PowerPlant).damaged = false
-	level.cells[25][7].(*PowerPlant).damaged = false
+	/*
+		level.cells[24][6].(*PowerPlant).damaged = false
+		level.cells[25][6].(*PowerPlant).damaged = false
+		level.cells[24][7].(*PowerPlant).damaged = false
+		level.cells[25][7].(*PowerPlant).damaged = false
 	*/
 
 	// Air Plant
