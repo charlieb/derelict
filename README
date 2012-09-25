@@ -26,6 +26,7 @@ c - create
 
 p - toggle pressure sensor
 e - toggle energy sensor
+; - toggle look mode
 
 d - debug overlays (map, air, energy)
 

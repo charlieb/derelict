@@ -33,6 +33,9 @@ type CursesUI struct {
 	player *Player
 
 	debugMode int
+
+	lookMode     bool
+	lookX, lookY int
 }
 
 func NewCursesUI(level *Level, player *Player) UI {
@@ -40,6 +43,7 @@ func NewCursesUI(level *Level, player *Player) UI {
 	ui.level = level
 	ui.player = player
 	ui.debugMode = none
+	ui.lookMode = false
 
 	// Init the mapCache to store seen parts of the level
 	ui.mapCache = make([][]int32, level.x, level.x)
@@ -59,27 +63,27 @@ func (ui *CursesUI) Run() {
 
 	ui.setup()
 	ui.drawMap()
-	for {
-		moved, quit := 0, false
-		for moved <= 0 {
-			// If any messages were added to the stack, draw them now
-			if ui.messages.Len() > 0 {
-				ui.drawMessages()
-			}
-			moved, quit = ui.handleKey(ui.screen.Getch())
-			Dlog.Println("   RunCurses: ", moved, quit)
-			if quit {
-				ui.messages.PushFront("Quit")
-				ui.drawMessages()
-				ui.screen.Getch()
-				return
-			}
+	moved, quit := 0, false
+	for !quit {
+		// If any messages were added to the stack, draw them now
+		if ui.messages.Len() > 0 {
+			ui.drawMessages()
+		}
+		moved, quit = ui.handleKey(ui.screen.Getch())
+		Dlog.Println("   RunCurses: ", moved, quit)
+		if quit {
+			ui.refresh()
+			ui.messages.PushFront("Quit")
+			ui.drawMessages()
+			ui.screen.Getch()
+			return
 		}
 		for it := 0; it < moved; it++ {
 			ui.level.Iterate()
 			ui.player.Iterate(ui.level)
 		}
 		ui.drawMap()
+		ui.refresh()
 	}
 }
 func (ui *CursesUI) Message(s string) { ui.messages.PushFront(s) }
@@ -116,6 +120,7 @@ func (ui *CursesUI) Menu(title string, s []string) (option int, aborted bool) {
 	} else {
 		aborted = false
 	}
+	// Interactive elements can call refresh to clear the screen
 	ui.refresh()
 	return
 }
@@ -262,6 +267,15 @@ func (ui *CursesUI) refresh() {
 		drawSensor(ui.player.energy_sensor_range, ui.player.x, ui.player.y,
 			ui.level.x, ui.level.y, ui.level.air, ui.screen)
 	}
+	// Looking?
+	if ui.lookMode {
+		Dlog.Println("   refresh: lookMode")
+		if ui.player.x == ui.lookX && ui.player.y == ui.lookY {
+			ui.screen.Addch(ui.lookX, ui.lookY, ui.player.Character(), curses.A_REVERSE)
+		} else {
+			ui.screen.Addch(ui.lookX, ui.lookY, ui.mapCache[ui.lookX][ui.lookY], curses.A_REVERSE)
+		}
+	}
 	ui.drawModeLine()
 }
 
@@ -334,7 +348,14 @@ func (ui *CursesUI) handleKey(key int) (moved int, quit bool) {
 	moved, quit = 0, false
 	x, y, abort := keyToDir(key)
 	if !abort {
-		if ui.player.Walk(x, y, ui.level) {
+		if ui.lookMode {
+			if ui.lookX+x >= 0 && ui.lookX+x < ui.level.x &&
+				ui.lookY+y >= 0 && ui.lookY+y < ui.level.y {
+				ui.lookX += x
+				ui.lookY += y
+			}
+			ui.Message(ui.level.cells[ui.lookX][ui.lookY].Description())
+		} else if ui.player.Walk(x, y, ui.level) {
 			moved = 1
 		}
 	} else {
@@ -363,12 +384,18 @@ func (ui *CursesUI) handleKey(key int) (moved int, quit bool) {
 				ui.player.sensor = energySensor
 			}
 			ui.refresh()
+		case ';': // Toggle look mode
+			ui.lookMode = !ui.lookMode
+			if ui.lookMode {
+				ui.lookX = ui.player.x
+				ui.lookY = ui.player.y
+				ui.Message("Looking around - this is you")
+			}
 		case 'd': // Debug
 			ui.debugMode++
 			if ui.debugMode == maxDebugMode {
 				ui.debugMode = none
 			}
-			ui.refresh()
 		case 'q':
 			quit = true
 		}

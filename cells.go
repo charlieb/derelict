@@ -7,6 +7,7 @@ import (
 
 ////////////////////// CELLS /////////////////////////
 type Cell interface {
+	Description() string
 	Walkable() bool
 	SeePast() bool
 
@@ -115,6 +116,7 @@ func genericCreate(max_steel, max_copper, max_turns int, name string, ui UI, p *
 ///////////// VACUUM ////////////////////
 type Vacuum struct{}
 
+func (c *Vacuum) Description() string                { return "The cold vacuum of space" }
 func (c *Vacuum) Walkable() bool                     { return true }
 func (c *Vacuum) SeePast() bool                      { return true }
 func (c *Vacuum) AirFlows() bool                     { return true }
@@ -142,6 +144,7 @@ func (c *Vacuum) Activate(ui UI) int {
 ///////////////// FLOOR /////////////////
 type Floor struct{}
 
+func (c *Floor) Description() string                { return "The floor" }
 func (c *Floor) Walkable() bool                     { return true }
 func (c *Floor) SeePast() bool                      { return true }
 func (c *Floor) AirFlows() bool                     { return true }
@@ -178,6 +181,7 @@ type Wall struct {
 	damaged bool
 }
 
+func (c *Wall) Description() string                { return "A wall" }
 func (w *Wall) Walkable() bool                     { return false }
 func (w *Wall) Character() int32                   { return '#' }
 func (w *Wall) SeePast() bool                      { return false }
@@ -206,7 +210,8 @@ type Door struct {
 	open, damaged bool
 }
 
-func (d *Door) Walkable() bool { return d.open }
+func (c *Door) Description() string { return "A door" }
+func (d *Door) Walkable() bool      { return d.open }
 func (d *Door) Character() int32 {
 	if d.open {
 		return '/'
@@ -247,6 +252,12 @@ type Conduit struct {
 	damaged bool
 }
 
+func (c *Conduit) Description() string {
+	if c.damaged {
+		return "A burned out energy conduit"
+	}
+	return "An energy conduit"
+}
 func (c *Conduit) Walkable() bool                     { return true }
 func (c *Conduit) SeePast() bool                      { return true }
 func (c *Conduit) AirFlows() bool                     { return true }
@@ -257,7 +268,7 @@ func (c *Conduit) Character() int32 {
 	if c.damaged {
 		return '~'
 	}
-		return '-'
+	return '-'
 }
 func (c *Conduit) Salvage(ui UI, p *Player) (int, Cell) {
 	return genericSalvage(0, 10, 10, ui, p), new(Floor)
@@ -279,6 +290,12 @@ type WallConduit struct {
 	damaged bool
 }
 
+func (c *WallConduit) Description() string {
+	if c.damaged {
+		return "A burned out energy conduit passes through a wall here"
+	}
+	return "An energy conduit passes through a wall here"
+}
 func (c *WallConduit) Walkable() bool                     { return false }
 func (c *WallConduit) SeePast() bool                      { return false }
 func (c *WallConduit) AirFlows() bool                     { return c.damaged }
@@ -289,7 +306,7 @@ func (c *WallConduit) Character() int32 {
 	if c.damaged {
 		return '%'
 	}
-		return '*'
+	return '*'
 }
 func (c *WallConduit) Salvage(ui UI, p *Player) (int, Cell) {
 	return genericSalvage(10, 10, 15, ui, p), new(Floor)
@@ -311,11 +328,12 @@ type PowerPlant struct {
 	damaged bool
 }
 
-func (c *PowerPlant) Walkable() bool                     { return false }
-func (c *PowerPlant) SeePast() bool                      { return false }
-func (c *PowerPlant) AirFlows() bool                     { return false }
-func (c *PowerPlant) AirSinkSource(a float64) float64    { return a }
-func (c *PowerPlant) EnergyFlows() bool                  { return !c.damaged }
+func (c *PowerPlant) Description() string             { return "An energy generator" }
+func (c *PowerPlant) Walkable() bool                  { return false }
+func (c *PowerPlant) SeePast() bool                   { return false }
+func (c *PowerPlant) AirFlows() bool                  { return false }
+func (c *PowerPlant) AirSinkSource(a float64) float64 { return a }
+func (c *PowerPlant) EnergyFlows() bool               { return !c.damaged }
 func (c *PowerPlant) EnergySinkSource(e float64) float64 {
 	if !c.damaged {
 		return 9
@@ -326,7 +344,7 @@ func (c *PowerPlant) Character() int32 {
 	if c.damaged {
 		return 'p'
 	}
-		return 'P'
+	return 'P'
 }
 func (c *PowerPlant) Salvage(ui UI, p *Player) (int, Cell) {
 	return genericSalvage(10, 10, 20, ui, p), new(Floor)
@@ -343,25 +361,25 @@ func (c *PowerPlant) Activate(ui UI) int {
 	return 1
 }
 
-
 ///////////// AIR PLANT /////////////////
 
 type AirPlant struct {
 	damaged bool
-	energy float64
+	energy  float64
 }
 
-func (c *AirPlant) Walkable() bool                     { return false }
-func (c *AirPlant) SeePast() bool                      { return false }
-func (c *AirPlant) AirFlows() bool                     { return !c.damaged }
-func (c *AirPlant) AirSinkSource(a float64) float64    {
+func (c *AirPlant) Description() string { return "An air generator" }
+func (c *AirPlant) Walkable() bool      { return false }
+func (c *AirPlant) SeePast() bool       { return false }
+func (c *AirPlant) AirFlows() bool      { return !c.damaged }
+func (c *AirPlant) AirSinkSource(a float64) float64 {
 	Dlog.Println("<> AirPlant")
 	if !c.damaged && c.energy > 5 {
 		return 9
 	}
 	return a
 }
-func (c *AirPlant) EnergyFlows() bool                  { return true }
+func (c *AirPlant) EnergyFlows() bool { return true }
 func (c *AirPlant) EnergySinkSource(e float64) float64 {
 	c.energy = e
 	return e
@@ -370,7 +388,7 @@ func (c *AirPlant) Character() int32 {
 	if c.damaged {
 		return 'a'
 	}
-		return 'A'
+	return 'A'
 }
 func (c *AirPlant) Salvage(ui UI, p *Player) (int, Cell) {
 	return genericSalvage(10, 10, 20, ui, p), new(Floor)
@@ -386,5 +404,3 @@ func (c *AirPlant) Activate(ui UI) int {
 	ui.Message("Nothing happens")
 	return 1
 }
-
-
