@@ -27,6 +27,7 @@ const (
 type CursesUI struct {
 	screen   *curses.Window
 	mapCache [][]int32
+	seen [][]bool
 	messages list.List
 
 	level  *Level
@@ -47,8 +48,10 @@ func NewCursesUI(level *Level, player *Player) UI {
 
 	// Init the mapCache to store seen parts of the level
 	ui.mapCache = make([][]int32, level.x, level.x)
+	ui.seen = make([][]bool, level.x, level.x)
 	for i := 0; i < level.x; i++ {
 		ui.mapCache[i] = make([]int32, level.y, level.y)
+		ui.seen[i] = make([]bool, level.y, level.y)
 		for j := 0; j < level.y; j++ {
 			ui.mapCache[i][j] = ' '
 		}
@@ -290,6 +293,7 @@ func (ui *CursesUI) drawMap() {
 					if i*i+j*j <= ui.player.vision*ui.player.vision {
 						if castRay(ui.player.x, ui.player.y, px, py, ui.level.cells) {
 							ui.mapCache[px][py] = ui.level.cells[px][py].(Drawable).Character()
+							ui.seen[px][py] = true
 							Dlog.Printf("   CurseUI.drawMap: %v %v drawn %c\n", px, py, ui.mapCache[px][py])
 						}
 					}
@@ -354,7 +358,11 @@ func (ui *CursesUI) handleKey(key int) (moved int, quit bool) {
 				ui.lookX += x
 				ui.lookY += y
 			}
-			ui.Message(ui.level.cells[ui.lookX][ui.lookY].Description())
+			if ui.seen[ui.lookX][ui.lookY] {
+				ui.Message(ui.level.cells[ui.lookX][ui.lookY].Description())
+			} else {
+				ui.Message("You haven't seen this square yet")
+			}
 		} else if ui.player.Walk(x, y, ui.level) {
 			moved = 1
 		}
