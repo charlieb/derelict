@@ -53,20 +53,6 @@ func (level *Level) Init() {
 		}
 	}
 }
-func (level *Level) outerWall() {
-	for i := 0; i < level.x; i++ {
-		level.cells[i][0] = new(Wall)
-	}
-	for i := 0; i < level.x; i++ {
-		level.cells[i][level.y-1] = new(Wall)
-	}
-	for j := 0; j < level.y; j++ {
-		level.cells[0][j] = new(Wall)
-	}
-	for j := 0; j < level.y; j++ {
-		level.cells[level.x-1][j] = new(Wall)
-	}
-}
 func (level *Level) processFlow(flow, flowBuffer *[][]float64,
 influence_range int, // Effectively controls speed of flow
 	flowsp func(Cell) bool,
@@ -238,64 +224,65 @@ func (p *Player) Action(level *Level, ui UI, action_id int) (turns int) {
 }
 
 func buildTestLevel(level *Level) {
+	x, y := 10, 2
 	// Floor
 	for i := 0; i < 31; i++ {
 		for j := 0; j < 20; j++ {
-			level.cells[i][j] = new(Floor)
+			level.cells[x+i][y+j] = new(Floor)
 		}
 	}
 	// Outer walls
 	for i := 0; i < 31; i++ {
-		level.cells[i][0] = new(Wall)
+		level.cells[x+i][y+0] = new(Wall)
 	}
 	for i := 0; i < 31; i++ {
-		level.cells[i][20] = new(Wall)
+		level.cells[x+i][y+20] = new(Wall)
 	}
 	for i := 0; i < 20; i++ {
-		level.cells[0][i] = new(Wall)
+		level.cells[x+0][y+i] = new(Wall)
 	}
 	for i := 0; i < 20; i++ {
-		level.cells[30][i] = new(Wall)
+		level.cells[x+30][y+i] = new(Wall)
 	}
 
 	// Inner walls
 	for i := 0; i < 15; i++ {
-		level.cells[8][i] = new(Wall)
+		level.cells[x+8][y+i] = new(Wall)
 	}
 	for i := 0; i < 18; i++ {
-		level.cells[i][14] = new(Wall)
+		level.cells[x+i][y+14] = new(Wall)
 	}
 	for i := 15; i < 20; i++ {
-		level.cells[12][i] = new(Wall)
+		level.cells[x+12][y+i] = new(Wall)
 	}
 	for i := 8; i < 18; i++ {
-		level.cells[i][8] = new(Wall)
+		level.cells[x+i][y+8] = new(Wall)
 	}
 	for i := 0; i < 20; i++ {
-		level.cells[18][i] = new(Wall)
+		level.cells[x+18][y+i] = new(Wall)
 	}
 	for i := 0; i < 20; i++ {
-		level.cells[21][i] = new(Wall)
+		level.cells[x+21][y+i] = new(Wall)
 	}
 	for i := 21; i < 30; i++ {
-		level.cells[i][10] = new(Wall)
+		level.cells[x+i][y+10] = new(Wall)
 	}
 
 	// Doors
-	level.cells[0][2] = new(Door)
-	level.cells[8][9] = new(Door)
-	level.cells[14][8] = new(Door)
-	level.cells[14][14] = new(Door)
-	level.cells[12][17] = new(Door)
-	level.cells[18][11] = new(Door)
-	level.cells[21][6] = new(Door)
-	level.cells[21][14] = new(Door)
+	level.cells[x+0][y+2] = new(Door)
+	level.cells[x+8][y+9] = new(Door)
+	level.cells[x+14][y+8] = new(Door)
+	level.cells[x+14][y+14] = new(Door)
+	level.cells[x+12][y+17] = new(Door)
+	level.cells[x+18][y+11] = new(Door)
+	level.cells[x+21][y+6] = new(Door)
+	level.cells[x+21][y+14] = new(Door)
 
 	// Power Plant
-	level.cells[26][3] = new(PowerPlant)
-	level.cells[27][3] = new(PowerPlant)
-	level.cells[26][4] = new(PowerPlant)
-	level.cells[27][4] = new(PowerPlant)
+	level.cells[x+26][y+3] = new(PowerPlant)
+	level.cells[x+27][y+3] = new(PowerPlant)
+	level.cells[x+26][y+4] = new(PowerPlant)
+	level.cells[x+27][y+4] = new(PowerPlant)
 /*
 	level.cells[24][6].(*PowerPlant).damaged = false
 	level.cells[25][6].(*PowerPlant).damaged = false
@@ -304,25 +291,25 @@ func buildTestLevel(level *Level) {
 	*/
 
 	// Air Plant
-	level.cells[26][17] = new(AirPlant)
-	level.cells[27][17] = new(AirPlant)
-	level.cells[26][16] = new(AirPlant)
-	level.cells[27][16] = new(AirPlant)
+	level.cells[x+26][y+17] = new(AirPlant)
+	level.cells[x+27][y+17] = new(AirPlant)
+	level.cells[x+26][y+16] = new(AirPlant)
+	level.cells[x+27][y+16] = new(AirPlant)
 
 	// Conduits
-	level.cells[28][4] = new(Conduit)
-	level.cells[28][5] = new(Conduit)
-	level.cells[28][6] = new(Conduit)
-	level.cells[28][7] = new(Conduit)
-	level.cells[28][8] = new(Conduit)
-	level.cells[28][9] = new(Conduit)
-	level.cells[28][10] = new(WallConduit)
-	level.cells[28][11] = new(Conduit)
-	level.cells[28][12] = new(Conduit)
-	level.cells[28][13] = new(Conduit)
-	level.cells[28][14] = new(Conduit)
-	level.cells[28][15] = new(Conduit)
-	level.cells[28][16] = new(Conduit)
+	level.cells[x+28][y+4] = new(Conduit)
+	level.cells[x+28][y+5] = new(Conduit)
+	level.cells[x+28][y+6] = new(Conduit)
+	level.cells[x+28][y+7] = new(Conduit)
+	level.cells[x+28][y+8] = new(Conduit)
+	level.cells[x+28][y+9] = new(Conduit)
+	level.cells[x+28][y+10] = new(WallConduit)
+	level.cells[x+28][y+11] = new(Conduit)
+	level.cells[x+28][y+12] = new(Conduit)
+	level.cells[x+28][y+13] = new(Conduit)
+	level.cells[x+28][y+14] = new(Conduit)
+	level.cells[x+28][y+15] = new(Conduit)
+	level.cells[x+28][y+16] = new(Conduit)
 
 }
 
