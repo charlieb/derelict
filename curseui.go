@@ -27,7 +27,7 @@ const (
 type CursesUI struct {
 	screen   *curses.Window
 	mapCache [][]int32
-	seen [][]bool
+	seen     [][]bool
 	messages list.List
 
 	level  *Level
@@ -84,6 +84,13 @@ func (ui *CursesUI) Run() {
 		for it := 0; it < moved; it++ {
 			ui.level.Iterate()
 			ui.player.Iterate(ui.level)
+			if ui.player.dead {
+				ui.refresh()
+				ui.messages.PushFront("You die")
+				ui.drawMessages()
+				ui.screen.Getch()
+				return
+			}
 		}
 		ui.drawMap()
 		ui.refresh()

@@ -54,10 +54,10 @@ func (level *Level) Init() {
 	}
 }
 func (level *Level) processFlow(flow, flowBuffer *[][]float64,
-influence_range int, // Effectively controls speed of flow
+	influence_range int, // Effectively controls speed of flow
 	flowsp func(Cell) bool,
 	sinksource func(Cell, float64) float64) {
-		Dlog.Println("-> processFlow")
+	Dlog.Println("-> processFlow")
 	const min_flow, max_flow float64 = 0, 9
 	var total, nairs float64
 	for i := 0; i < level.x; i++ {
@@ -95,12 +95,12 @@ func (level *Level) Iterate() {
 	Dlog.Println("-> Level.Iterate")
 	// Air
 	level.processFlow(&level.air, &level.airBuffer, 1,
-	func(c Cell) bool { return c.AirFlows() },
-	func(c Cell, a float64) float64 { return c.AirSinkSource(a) })
+		func(c Cell) bool { return c.AirFlows() },
+		func(c Cell, a float64) float64 { return c.AirSinkSource(a) })
 	// Energy
 	level.processFlow(&level.energy, &level.energyBuffer, 5,
-	func(c Cell) bool { return c.EnergyFlows() },
-	func(c Cell, a float64) float64 { return c.EnergySinkSource(a) })
+		func(c Cell) bool { return c.EnergyFlows() },
+		func(c Cell, a float64) float64 { return c.EnergySinkSource(a) })
 	Dlog.Println("<- Level.Iterate")
 }
 
@@ -115,17 +115,19 @@ const (
 	energySensor
 	maxSensor
 )
+
 type Player struct {
 	x, y   int
 	vision int
 
 	energy_left, energy_capcacity float64
 
-	sensor int
-	energy_sensor_range int
+	sensor                int
+	energy_sensor_range   int
 	pressure_sensor_range int
 
 	air_left, air_capacity float64
+	dead                   bool
 	helmet_on              bool
 
 	copper, steel int
@@ -143,6 +145,7 @@ func (p *Player) Init() {
 
 	p.air_left, p.air_capacity = 10.0, 10.0
 	p.helmet_on = true
+	p.dead = false
 }
 func (p *Player) Move(to_x, to_y int) {
 	Dlog.Println("-> Move", to_x, to_y)
@@ -164,7 +167,24 @@ func (p *Player) Walk(dir_x, dir_y int, level *Level) bool {
 }
 func (p *Player) Character() int32 { return '@' }
 func (p *Player) Iterate(level *Level) {
-	p.air_left -= 0.1 / (1 + level.air[p.x][p.y])
+	const med, low float64 = 6, 3
+	if level.air[p.x][p.y] < low {
+		p.air_left -= 0.1 / (1 + level.air[p.x][p.y])
+		/*
+			} else if level.air[p.x][p.y] >= low && level.air[p.x][p.y] < med {
+				// Do nothing, enough air to maintain
+		*/
+	} else if level.air[p.x][p.y] >= med {
+		p.air_left += level.air[p.x][p.y] / 50
+	}
+
+	// Air limits
+	if p.air_left <= 0 {
+		p.dead = true
+	}
+	if p.air_left > p.air_capacity {
+		p.air_left = p.air_capacity
+	}
 }
 
 func (p *Player) Action(level *Level, ui UI, action_id int) (turns int) {
@@ -283,11 +303,11 @@ func buildTestLevel(level *Level) {
 	level.cells[x+27][y+3] = new(PowerPlant)
 	level.cells[x+26][y+4] = new(PowerPlant)
 	level.cells[x+27][y+4] = new(PowerPlant)
-/*
-	level.cells[24][6].(*PowerPlant).damaged = false
-	level.cells[25][6].(*PowerPlant).damaged = false
-	level.cells[24][7].(*PowerPlant).damaged = false
-	level.cells[25][7].(*PowerPlant).damaged = false
+	/*
+		level.cells[24][6].(*PowerPlant).damaged = false
+		level.cells[25][6].(*PowerPlant).damaged = false
+		level.cells[24][7].(*PowerPlant).damaged = false
+		level.cells[25][7].(*PowerPlant).damaged = false
 	*/
 
 	// Air Plant
