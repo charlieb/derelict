@@ -76,7 +76,7 @@ func genericRepair(damaged *bool, max_steel, max_copper, max_turns int, name str
 			p.copper = 0
 		} else {
 			*damaged = false
-			ui.Message(fmt.Sprintf("Used %v steel and $v copper to repair the %v in %v turns",
+			ui.Message(fmt.Sprintf("Used %v steel and %v copper to repair the %v in %v turns",
 				st, cu, name, turns))
 		}
 	} else {
@@ -382,6 +382,9 @@ func (c *AirPlant) AirSinkSource(a float64) float64 {
 func (c *AirPlant) EnergyFlows() bool { return true }
 func (c *AirPlant) EnergySinkSource(e float64) float64 {
 	c.energy = e
+	if e > 5 {
+		return e - (e - 5) / 50
+	}
 	return e
 }
 func (c *AirPlant) Character() int32 {

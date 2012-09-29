@@ -275,7 +275,7 @@ func (ui *CursesUI) refresh() {
 			ui.level.x, ui.level.y, ui.level.air, ui.screen)
 	case energySensor:
 		drawSensor(ui.player.energy_sensor_range, ui.player.x, ui.player.y,
-			ui.level.x, ui.level.y, ui.level.air, ui.screen)
+			ui.level.x, ui.level.y, ui.level.energy, ui.screen)
 	}
 	// Looking?
 	if ui.lookMode {

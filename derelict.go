@@ -54,11 +54,14 @@ func (level *Level) Init() {
 	}
 }
 func (level *Level) processFlow(flow, flowBuffer *[][]float64,
-	influence_range int, // Effectively controls speed of flow
+	threshold float64, // Cells with less than this value are not drawn from
 	flowsp func(Cell) bool,
 	sinksource func(Cell, float64) float64) {
 	Dlog.Println("-> processFlow")
-	const min_flow, max_flow float64 = 0, 9
+	const (
+		min_flow, max_flow float64 = 0, 9
+		influence_range int = 1
+	)
 	var total, nairs float64
 	for i := 0; i < level.x; i++ {
 		for j := 0; j < level.y; j++ {
@@ -69,7 +72,7 @@ func (level *Level) processFlow(flow, flowBuffer *[][]float64,
 				for ii := -influence_range; ii <= influence_range; ii++ {
 					for jj := -influence_range; jj <= influence_range; jj++ {
 						if i+ii >= 0 && i+ii < level.x && j+jj >= 0 && j+jj < level.y {
-							if flowsp(level.cells[i+ii][j+jj]) {
+							if flowsp(level.cells[i+ii][j+jj]) && (*flow)[i+ii][j+jj] > threshold {
 								total += (*flow)[i+ii][j+jj]
 								nairs++
 								Dlog.Printf("   processFlow (%v, %v), flows %v / %v\n", i+ii, j+jj, total, nairs)
@@ -94,7 +97,7 @@ func (level *Level) processFlow(flow, flowBuffer *[][]float64,
 func (level *Level) Iterate() {
 	Dlog.Println("-> Level.Iterate")
 	// Air
-	level.processFlow(&level.air, &level.airBuffer, 1,
+	level.processFlow(&level.air, &level.airBuffer, -1,
 		func(c Cell) bool { return c.AirFlows() },
 		func(c Cell, a float64) float64 { return c.AirSinkSource(a) })
 	// Energy
@@ -325,7 +328,9 @@ func buildTestLevel(level *Level) {
 	level.cells[x+28][y+9] = new(Conduit)
 	level.cells[x+28][y+10] = new(WallConduit)
 	level.cells[x+28][y+11] = new(Conduit)
-	level.cells[x+28][y+12] = new(Conduit)
+	tmp := new(Conduit)
+	tmp.damaged = true
+	level.cells[x+28][y+12] = tmp
 	level.cells[x+28][y+13] = new(Conduit)
 	level.cells[x+28][y+14] = new(Conduit)
 	level.cells[x+28][y+15] = new(Conduit)
