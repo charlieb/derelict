@@ -60,7 +60,7 @@ func (level *Level) processFlow(flow, flowBuffer *[][]float64,
 	Dlog.Println("-> processFlow")
 	const (
 		min_flow, max_flow float64 = 0, 9
-		influence_range int = 1
+		influence_range    int     = 1
 	)
 	var total, nairs float64
 	for i := 0; i < level.x; i++ {
@@ -336,6 +336,13 @@ func buildTestLevel(level *Level) {
 	level.cells[x+28][y+15] = new(Conduit)
 	level.cells[x+28][y+16] = new(Conduit)
 
+	level.cells[0][5] = new(Wall)
+	level.cells[1][5] = new(Wall)
+	level.cells[0][7] = new(Wall)
+	level.cells[1][7] = new(Wall)
+	level.cells[1][6] = new(Door)
+	level.cells[0][6] = new(EntranceExit)
+
 }
 
 /////////////////// GAME MAIN ///////////////////
@@ -353,6 +360,8 @@ func NewGame() Game {
 	buildTestLevel(&game.level)
 
 	game.player.Init()
+	game.player.x = 0
+	game.player.y = 6
 
 	return game
 }
