@@ -28,6 +28,8 @@ const (
 
 type Level struct {
 	x, y      int
+	exit_x, exit_y int
+
 	cells     [][]Cell
 	air       [][]float64
 	airBuffer [][]float64
@@ -131,6 +133,7 @@ type Player struct {
 
 	air_left, air_capacity float64
 	dead                   bool
+	left_ship bool
 	helmet_on              bool
 
 	copper, steel int
@@ -139,6 +142,7 @@ type Player struct {
 func (p *Player) Init() {
 	p.x, p.y = 1, 1
 	p.vision = 5
+	p.left_ship = false
 
 	p.energy_left, p.energy_capcacity = 1.0, 1.0
 
@@ -170,6 +174,10 @@ func (p *Player) Walk(dir_x, dir_y int, level *Level) bool {
 }
 func (p *Player) Character() int32 { return '@' }
 func (p *Player) Iterate(level *Level) {
+	if !p.left_ship && (level.exit_x != p.x || level.exit_y != p.y) {
+			p.left_ship = true
+	}
+
 	const med, low float64 = 6, 3
 	if level.air[p.x][p.y] < low {
 		p.air_left -= 0.1 / (1 + level.air[p.x][p.y])
@@ -342,6 +350,7 @@ func buildTestLevel(level *Level) {
 	level.cells[1][7] = new(Wall)
 	level.cells[1][6] = new(Door)
 	level.cells[0][6] = new(EntranceExit)
+	level.exit_x, level.exit_y = 0, 6
 
 }
 

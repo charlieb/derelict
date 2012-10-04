@@ -91,6 +91,11 @@ func (ui *CursesUI) Run() {
 				ui.screen.Getch()
 				return
 			}
+			if ui.player.left_ship && ui.level.exit_x == ui.player.x && ui.level.exit_y == ui.player.y {
+				ui.refresh()
+				yes, _ := ui.YesNoPrompt("Leave this derelict behind?")
+				if yes { return }
+			}
 		}
 		ui.drawMap()
 		ui.refresh()
