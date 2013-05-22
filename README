@@ -34,7 +34,10 @@ q - quit
 
 TODO
 ~~~~
-- Entrance / Exit, if we're going to kill the player we should at least give them an escape route
+- Entrance / Exit, now that we can exit like this, there should be a summary of
+	what was savlaged
+- Player progress, maybe give the option to improve sensor range, air tank size etc. 
+- Once the player exits give a menu to allow things to be bought, like the
+	above
 - Level generation
-- Player progress, maybe give the option to improve sensor range, air tank size etc. also how should the player "pay" for this?
 - Additional cell types - maybe engines, computer, computer conduits etc.

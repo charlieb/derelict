@@ -375,6 +375,9 @@ func NewGame() Game {
 	return game
 }
 func main() {
+	testLevel()
+	return
+
 	file, err := os.Create("log")
 	if err != nil {
 		log.Fatal(err)
