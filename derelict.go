@@ -3,6 +3,8 @@ package main
 import (
 	"log"
 	"os"
+  "math/rand"
+  "time"
 )
 
 var Dlog *log.Logger
@@ -375,6 +377,9 @@ func NewGame() Game {
 	return game
 }
 func main() {
+  // set a new random seed
+  rand.Seed(time.Now().UTC().UnixNano())
+
 	testLevel()
 	return
 
