@@ -2,9 +2,9 @@ package main
 
 import (
 	"log"
+	"math/rand"
 	"os"
-  "math/rand"
-  "time"
+	"time"
 )
 
 var Dlog *log.Logger
@@ -26,15 +26,65 @@ const (
 	DOOR_CONDUIT
 )
 
+////////////////////// AIR /////////////////////////
+type Air struct {
+	x, y   int
+	air    [][]float64
+	buffer [][]float64
+}
+func (a *Air) Init(x,y int) {
+  a.x, a.y = x,y
+	a.air = make([][]float64, x, x)
+	a.buffer = make([][]float64, x, x)
+	for i := 0; i < x; i++ {
+		a.air[i] = make([]float64, y, y)
+		a.buffer[i] = make([]float64, y, y)
+  }
+}
+func (a *Air) ProcessFlow(cells [][]Cell) {
+	const (
+	)
+	var total, nairs float64
+	for i := 0; i < a.x; i++ {
+		for j := 0; j < a.y; j++ {
+			if cells[i][j].AirFlows() {
+				total = 0
+				nairs = 0
+				Dlog.Printf("   processFlow cell: (%v, %v)\n", i, j)
+				for ii := -1; ii <= 1; ii++ {
+					for jj := -1; jj <= 1; jj++ {
+						if i+ii >= 0 && i+ii < a.x && j+jj >= 0 && j+jj < a.y {
+							if cells[i+ii][j+jj].AirFlows() {
+								total += a.air[i+ii][j+jj]
+								nairs++
+								Dlog.Printf("   processFlow (%v, %v), flows %v / %v\n", i+ii, j+jj, total, nairs)
+							}
+						}
+					}
+				}
+				if nairs == 0 || total == 0 {
+					a.buffer[i][j] = cells[i][j].AirSinkSource(0)
+				} else {
+          a.buffer[i][j] = cells[i][j].AirSinkSource(total/nairs)
+				}
+				Dlog.Printf("   processFlow (%v, %v) airs: %v, total: %v\n", i, j, nairs, total)
+			}
+		}
+	}
+	tmp := a.air
+  a.air = a.buffer
+  a.buffer = tmp
+	Dlog.Println("<- processFlow")
+}
+
 ////////////////////// LEVEL /////////////////////////
 
 type Level struct {
-	x, y      int
+	x, y           int
 	exit_x, exit_y int
 
 	cells     [][]Cell
-	air       [][]float64
-	airBuffer [][]float64
+  air Air
 
 	energy       [][]float64
 	energyBuffer [][]float64
@@ -42,14 +92,11 @@ type Level struct {
 
 func (level *Level) Init() {
 	level.cells = make([][]Cell, level.x, level.x)
-	level.air = make([][]float64, level.x, level.x)
-	level.airBuffer = make([][]float64, level.x, level.x)
+	level.air.Init(level.x, level.y)
 	level.energy = make([][]float64, level.x, level.x)
 	level.energyBuffer = make([][]float64, level.x, level.x)
 	for i := 0; i < level.x; i++ {
 		level.cells[i] = make([]Cell, level.y, level.y)
-		level.air[i] = make([]float64, level.y, level.y)
-		level.airBuffer[i] = make([]float64, level.y, level.y)
 		level.energy[i] = make([]float64, level.y, level.y)
 		level.energyBuffer[i] = make([]float64, level.y, level.y)
 		for j := 0; j < level.y; j++ {
@@ -100,10 +147,7 @@ func (level *Level) processFlow(flow, flowBuffer *[][]float64,
 }
 func (level *Level) Iterate() {
 	Dlog.Println("-> Level.Iterate")
-	// Air
-	level.processFlow(&level.air, &level.airBuffer, -1,
-		func(c Cell) bool { return c.AirFlows() },
-		func(c Cell, a float64) float64 { return c.AirSinkSource(a) })
+  level.air.ProcessFlow(level.cells)
 	// Energy
 	level.processFlow(&level.energy, &level.energyBuffer, 5,
 		func(c Cell) bool { return c.EnergyFlows() },
@@ -135,7 +179,7 @@ type Player struct {
 
 	air_left, air_capacity float64
 	dead                   bool
-	left_ship bool
+	left_ship              bool
 	helmet_on              bool
 
 	copper, steel int
@@ -177,18 +221,18 @@ func (p *Player) Walk(dir_x, dir_y int, level *Level) bool {
 func (p *Player) Character() int32 { return '@' }
 func (p *Player) Iterate(level *Level) {
 	if !p.left_ship && (level.exit_x != p.x || level.exit_y != p.y) {
-			p.left_ship = true
+		p.left_ship = true
 	}
 
 	const med, low float64 = 6, 3
-	if level.air[p.x][p.y] < low {
-		p.air_left -= 0.1 / (1 + level.air[p.x][p.y])
+	if level.air.air[p.x][p.y] < low {
+		p.air_left -= 0.1 / (1 + level.air.air[p.x][p.y])
 		/*
-			} else if level.air[p.x][p.y] >= low && level.air[p.x][p.y] < med {
+			} else if level.air.air[p.x][p.y] >= low && level.air.air[p.x][p.y] < med {
 				// Do nothing, enough air to maintain
 		*/
-	} else if level.air[p.x][p.y] >= med {
-		p.air_left += level.air[p.x][p.y] / 50
+	} else if level.air.air[p.x][p.y] >= med {
+		p.air_left += level.air.air[p.x][p.y] / 50
 	}
 
 	// Air limits
@@ -377,8 +421,8 @@ func NewGame() Game {
 	return game
 }
 func main() {
-  // set a new random seed
-  rand.Seed(time.Now().UTC().UnixNano())
+	// set a new random seed
+	rand.Seed(time.Now().UTC().UnixNano())
 
 	testLevel()
 	return

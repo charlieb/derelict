@@ -94,7 +94,9 @@ func (ui *CursesUI) Run() {
 			if ui.player.left_ship && ui.level.exit_x == ui.player.x && ui.level.exit_y == ui.player.y {
 				ui.refresh()
 				yes, _ := ui.YesNoPrompt("Leave this derelict behind?")
-				if yes { return }
+				if yes {
+					return
+				}
 			}
 		}
 		ui.drawMap()
@@ -255,10 +257,10 @@ func (ui *CursesUI) refresh() {
 			case revealMap:
 				ch = ui.level.cells[i][j].(Drawable).Character()
 			case airOverlay:
-				if ui.level.air[i][j] >= 10 {
+				if ui.level.air.air[i][j] >= 10 {
 					ch = '9'
 				} else {
-					ch = '0' + int32(ui.level.air[i][j])
+					ch = '0' + int32(ui.level.air.air[i][j])
 				}
 			case energyOverlay:
 				if ui.level.energy[i][j] >= 10 {
@@ -277,7 +279,7 @@ func (ui *CursesUI) refresh() {
 		ui.screen.Addch(ui.player.x, ui.player.y, ui.player.Character(), 0)
 	case pressureSensor:
 		drawSensor(ui.player.pressure_sensor_range, ui.player.x, ui.player.y,
-			ui.level.x, ui.level.y, ui.level.air, ui.screen)
+			ui.level.x, ui.level.y, ui.level.air.air, ui.screen)
 	case energySensor:
 		drawSensor(ui.player.energy_sensor_range, ui.player.x, ui.player.y,
 			ui.level.x, ui.level.y, ui.level.energy, ui.screen)
