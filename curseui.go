@@ -263,10 +263,10 @@ func (ui *CursesUI) refresh() {
 					ch = '0' + int32(ui.level.air.air[i][j])
 				}
 			case energyOverlay:
-				if ui.level.energy[i][j] >= 10 {
+				if ui.level.energy.energy[i][j] >= 10 {
 					ch = '9'
 				} else {
-					ch = '0' + int32(ui.level.energy[i][j])
+					ch = '0' + int32(ui.level.energy.energy[i][j])
 				}
 			}
 			ui.screen.Addch(i, j, ch, 0)
@@ -282,7 +282,7 @@ func (ui *CursesUI) refresh() {
 			ui.level.x, ui.level.y, ui.level.air.air, ui.screen)
 	case energySensor:
 		drawSensor(ui.player.energy_sensor_range, ui.player.x, ui.player.y,
-			ui.level.x, ui.level.y, ui.level.energy, ui.screen)
+			ui.level.x, ui.level.y, ui.level.energy.energy, ui.screen)
 	}
 	// Looking?
 	if ui.lookMode {

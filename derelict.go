@@ -1,6 +1,7 @@
 package main
 
 import (
+	"container/list"
 	"log"
 	"math/rand"
 	"os"
@@ -32,18 +33,18 @@ type Air struct {
 	air    [][]float64
 	buffer [][]float64
 }
-func (a *Air) Init(x,y int) {
-  a.x, a.y = x,y
+
+func (a *Air) Init(x, y int) {
+	a.x, a.y = x, y
 	a.air = make([][]float64, x, x)
 	a.buffer = make([][]float64, x, x)
 	for i := 0; i < x; i++ {
 		a.air[i] = make([]float64, y, y)
 		a.buffer[i] = make([]float64, y, y)
-  }
+	}
 }
 func (a *Air) ProcessFlow(cells [][]Cell) {
-	const (
-	)
+	const ()
 	var total, nairs float64
 	for i := 0; i < a.x; i++ {
 		for j := 0; j < a.y; j++ {
@@ -65,16 +66,76 @@ func (a *Air) ProcessFlow(cells [][]Cell) {
 				if nairs == 0 || total == 0 {
 					a.buffer[i][j] = cells[i][j].AirSinkSource(0)
 				} else {
-          a.buffer[i][j] = cells[i][j].AirSinkSource(total/nairs)
+					a.buffer[i][j] = cells[i][j].AirSinkSource(total / nairs)
 				}
 				Dlog.Printf("   processFlow (%v, %v) airs: %v, total: %v\n", i, j, nairs, total)
 			}
 		}
 	}
 	tmp := a.air
-  a.air = a.buffer
-  a.buffer = tmp
+	a.air = a.buffer
+	a.buffer = tmp
 	Dlog.Println("<- processFlow")
+}
+
+////////////////////// ENERGY ////////////////////////
+type Energy struct {
+	x, y   int
+	energy [][]float64
+}
+
+func (e *Energy) Init(x, y int) {
+	e.x, e.y = x, y
+	e.energy = make([][]float64, x, x)
+	for i := 0; i < x; i++ {
+		e.energy[i] = make([]float64, y, y)
+	}
+}
+func (e *Energy) ProcessFlow(cells [][]Cell) {
+	tbd := list.New()
+	for i := 0; i < e.x; i++ {
+		for j := 0; j < e.y; j++ {
+			e.energy[i][j] = cells[i][j].EnergySinkSource(0)
+			if e.energy[i][j] > 0 {
+				tbd.PushBack([2]int{i, j})
+			}
+		}
+	}
+	member := func(el [2]int, lst *list.List) bool {
+		for e := lst.Front(); e != nil; e = e.Next() {
+			a := e.Value.([2]int)
+			if a[0] == el[0] && a[1] == el[1] {
+				return true
+			}
+		}
+		return false
+	}
+
+	done := list.New()
+	var follow func(int, int)
+	follow = func(x, y int) {
+		for i := x - 1; i <= x+1; i++ {
+			for j := y - 1; j <= y+1; j++ {
+				if i >= 0 && i < e.x && j >= 0 && j < e.y {
+					if cells[i][j].EnergyFlows() && !member([2]int{i, j}, done) {
+						Dlog.Printf("Energy.ProcessFlows: (%v, %v)\n", i, j)
+						done.PushBack([2]int{i, j})
+						if e.energy[x][y] > e.energy[i][j] {
+							e.energy[i][j] = cells[i][j].EnergySinkSource(e.energy[x][y])
+							if e.energy[i][j] > 0 {
+								follow(i, j)
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+	for e := tbd.Front(); e != nil; e = e.Next() {
+		Dlog.Printf("Energy.ProcessFlows Source: (%v, %v)\n", e.Value.([2]int)[0], e.Value.([2]int)[1])
+		done.PushBack(e.Value)
+		follow(e.Value.([2]int)[0], e.Value.([2]int)[1])
+	}
 }
 
 ////////////////////// LEVEL /////////////////////////
@@ -83,75 +144,27 @@ type Level struct {
 	x, y           int
 	exit_x, exit_y int
 
-	cells     [][]Cell
-  air Air
+	cells [][]Cell
+	air   Air
 
-	energy       [][]float64
-	energyBuffer [][]float64
+	energy Energy
 }
 
 func (level *Level) Init() {
 	level.cells = make([][]Cell, level.x, level.x)
 	level.air.Init(level.x, level.y)
-	level.energy = make([][]float64, level.x, level.x)
-	level.energyBuffer = make([][]float64, level.x, level.x)
+	level.energy.Init(level.x, level.y)
 	for i := 0; i < level.x; i++ {
 		level.cells[i] = make([]Cell, level.y, level.y)
-		level.energy[i] = make([]float64, level.y, level.y)
-		level.energyBuffer[i] = make([]float64, level.y, level.y)
 		for j := 0; j < level.y; j++ {
 			level.cells[i][j] = new(Vacuum)
 		}
 	}
 }
-func (level *Level) processFlow(flow, flowBuffer *[][]float64,
-	threshold float64, // Cells with less than this value are not drawn from
-	flowsp func(Cell) bool,
-	sinksource func(Cell, float64) float64) {
-	Dlog.Println("-> processFlow")
-	const (
-		min_flow, max_flow float64 = 0, 9
-		influence_range    int     = 1
-	)
-	var total, nairs float64
-	for i := 0; i < level.x; i++ {
-		for j := 0; j < level.y; j++ {
-			if flowsp(level.cells[i][j]) {
-				total = 0
-				nairs = 0
-				Dlog.Printf("   processFlow cell: (%v, %v)\n", i, j)
-				for ii := -influence_range; ii <= influence_range; ii++ {
-					for jj := -influence_range; jj <= influence_range; jj++ {
-						if i+ii >= 0 && i+ii < level.x && j+jj >= 0 && j+jj < level.y {
-							if flowsp(level.cells[i+ii][j+jj]) && (*flow)[i+ii][j+jj] > threshold {
-								total += (*flow)[i+ii][j+jj]
-								nairs++
-								Dlog.Printf("   processFlow (%v, %v), flows %v / %v\n", i+ii, j+jj, total, nairs)
-							}
-						}
-					}
-				}
-				if nairs == 0 || total == 0 {
-					(*flowBuffer)[i][j] = sinksource(level.cells[i][j], 0)
-				} else {
-					(*flowBuffer)[i][j] = sinksource(level.cells[i][j], total/nairs)
-				}
-				Dlog.Printf("   processFlow (%v, %v) airs: %v, total: %v\n", i, j, nairs, total)
-			}
-		}
-	}
-	tmp := *flow
-	*flow = *flowBuffer
-	*flowBuffer = tmp
-	Dlog.Println("<- processFlow")
-}
 func (level *Level) Iterate() {
 	Dlog.Println("-> Level.Iterate")
-  level.air.ProcessFlow(level.cells)
-	// Energy
-	level.processFlow(&level.energy, &level.energyBuffer, 5,
-		func(c Cell) bool { return c.EnergyFlows() },
-		func(c Cell, a float64) float64 { return c.EnergySinkSource(a) })
+	level.air.ProcessFlow(level.cells)
+	level.energy.ProcessFlow(level.cells)
 	Dlog.Println("<- Level.Iterate")
 }
 
@@ -424,8 +437,10 @@ func main() {
 	// set a new random seed
 	rand.Seed(time.Now().UTC().UnixNano())
 
-	testLevel()
-	return
+	/*
+		testLevel()
+		return
+	*/
 
 	file, err := os.Create("log")
 	if err != nil {

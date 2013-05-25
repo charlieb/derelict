@@ -383,7 +383,7 @@ func (c *AirPlant) EnergyFlows() bool { return true }
 func (c *AirPlant) EnergySinkSource(e float64) float64 {
 	c.energy = e
 	if e > 5 {
-		return e - (e - 5) / 50
+		return e - (e-5)/50
 	}
 	return e
 }
@@ -407,19 +407,20 @@ func (c *AirPlant) Activate(ui UI) int {
 	ui.Message("Nothing happens")
 	return 1
 }
+
 ///////////// Entrance/Exit /////////////////
 
 type EntranceExit struct {
 }
 
-func (c *EntranceExit) Description() string { return "Your ship, safety" }
-func (c *EntranceExit) Walkable() bool      { return true }
-func (c *EntranceExit) SeePast() bool       { return true }
-func (c *EntranceExit) AirFlows() bool      { return true }
-func (c *EntranceExit) AirSinkSource(a float64) float64 { return 9 }
-func (c *EntranceExit) EnergyFlows() bool { return false }
+func (c *EntranceExit) Description() string                { return "Your ship, safety" }
+func (c *EntranceExit) Walkable() bool                     { return true }
+func (c *EntranceExit) SeePast() bool                      { return true }
+func (c *EntranceExit) AirFlows() bool                     { return true }
+func (c *EntranceExit) AirSinkSource(a float64) float64    { return 9 }
+func (c *EntranceExit) EnergyFlows() bool                  { return false }
 func (c *EntranceExit) EnergySinkSource(e float64) float64 { return 0 }
-func (c *EntranceExit) Character() int32 { return '.' }
+func (c *EntranceExit) Character() int32                   { return '.' }
 func (c *EntranceExit) Salvage(ui UI, p *Player) (int, Cell) {
 	ui.Message("Why would you salvage your own ship?")
 	return 0, c
